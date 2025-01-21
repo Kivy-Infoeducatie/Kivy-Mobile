@@ -279,7 +279,7 @@ struct SmallRecipeCard: View {
                     Text(recipe.name)
                         .font(.callout.bold())
                         .lineLimit(2)
-                    Text(recipe.authorName ?? recipe.author?.username ?? "")
+                    Text(recipe.authorUsername)
                         .font(.caption)
                         .foregroundStyle(.secondary)
 

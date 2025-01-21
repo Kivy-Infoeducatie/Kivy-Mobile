@@ -43,7 +43,7 @@ struct OngoingRecipeWidget: View {
                         VStack(alignment: .leading) {
                             Text(recipe.name)
                                 .font(.headline)
-                            Text("by \(recipe.authorName)")
+                            Text("by \(recipe.authorUsername)")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                         }

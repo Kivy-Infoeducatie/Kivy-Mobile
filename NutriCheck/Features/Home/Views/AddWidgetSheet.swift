@@ -45,6 +45,7 @@ struct AddWidgetSheet: View {
                                             ),
                                             geometry: geo
                                         )
+                                        .disabled(true)
                                     }
                                     .frame(width: geo.size.width)
                                 }

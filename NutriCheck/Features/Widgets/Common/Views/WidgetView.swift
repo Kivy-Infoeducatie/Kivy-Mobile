@@ -23,7 +23,7 @@ struct WidgetView: View {
             case .askAI:
                 AskAIWidget(widget: widget)
             case .shoppingList:
-                EmptyView()
+                ShoppingListWidget(widget: widget)
             case .reminder:
                 EmptyView()
             case .ongoingRecipe:

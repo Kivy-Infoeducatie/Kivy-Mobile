@@ -214,7 +214,7 @@ struct CardView: View {
                     Text(recipe.name)
                         .font(.title2.bold())
                         .multilineTextAlignment(.leading)
-                    Text("by \(recipe.authorName)")
+                    Text("by \(recipe.authorUsername)")
                         .font(.callout.bold())
                         .opacity(0.9)
                         .padding(.bottom, 4)

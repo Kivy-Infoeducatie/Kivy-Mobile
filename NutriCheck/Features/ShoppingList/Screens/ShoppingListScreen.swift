@@ -63,6 +63,13 @@ struct ShoppingListItemRow: View {
     @Environment(\.modelContext) var modelContext
     
     let item: ShoppingListItem
+    let showQuantity: Bool
+    
+    init(item: ShoppingListItem, showQuantity: Bool = true) {
+        self.item = item
+        self.showQuantity = showQuantity
+    }
+    
     @State private var isChecked = false
     @State private var deletionTimer: Timer?
     
@@ -94,10 +101,13 @@ struct ShoppingListItemRow: View {
             Text(item.name)
                 .strikethrough(isChecked)
                 .foregroundColor(isChecked ? .gray : .primary)
+                .lineLimit(1)
             
-            Spacer()
-            Text("\(quantityText) \(item.unit)")
-                .foregroundColor(isChecked ? .gray : .primary)
+            if showQuantity {
+                Spacer()
+                Text("\(quantityText) \(item.unit)")
+                    .foregroundColor(isChecked ? .gray : .primary)
+            }
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
@@ -132,6 +142,7 @@ struct ShoppingListItemRow: View {
         modelContext.delete(item)
     }
 }
+
 struct AddShoppingListItemScreen: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.modelContext) var modelContext

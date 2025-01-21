@@ -64,7 +64,7 @@ struct RecipeScreen: View {
                             VStack(alignment: .leading) {
                                 Text(recipe.name)
                                     .font(.title2.bold())
-                                Text("by \(recipe.authorName)")
+                                Text("by \(recipe.authorUsername)")
                                     .font(.callout.bold())
                                     .opacity(0.9)
                                     .padding(.bottom, 4)
@@ -214,13 +214,18 @@ struct RecipeScreen: View {
                         VStack(alignment: .leading) {
                             NavigationLinkSectionHeader(
                                 title: "Comments",
-                                destination: Text("ceva")
+                                destination: CommentsScreen(comments: recipe.comments)
                             )
                             .padding(.bottom, 4)
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack {
-                                    ForEach(0 ..< 5) { _ in
-                                        CommentCard(author: "User", comment: "Comment", date: .now)
+                                    ForEach(recipe.comments) { comment in
+                                        CommentCard(comment: comment)
+                                            .frame(
+                                                width: 250,
+                                                height: 110,
+                                                alignment: .topLeading
+                                            )
                                     }
                                 }
                             }
@@ -469,37 +474,40 @@ struct IngredientRow: View {
 }
 
 struct CommentCard: View {
-    let author: String
-    let comment: String
-    let date: Date
+    let comment: Comment
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(author)
+                Text(comment.authorUsername)
                     .font(.callout.bold())
                 Spacer()
-                Text("\(date.formattedRelative())")
+                Text("\(comment.createdAt.formattedRelative())")
                     .font(.caption)
             }
-            Text(comment)
+            Text(comment.content)
                 .font(.body)
         }
         .padding()
-        .frame(
-            width: 250,
-            height: 100,
-            alignment: .topLeading
-        )
         .background(.thinMaterial)
         .clipShape(.rect(cornerRadius: 20))
     }
 }
 
-//struct CommentsScreen: View {
-//    let comments: [Comment]
-//    
-//    var body: some View {
-//        
-//    }
-//}
+struct CommentsScreen: View {
+    let comments: [Comment]
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                ForEach(comments) { comment in
+                    CommentCard(comment: comment)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(.horizontal)
+            .navigationTitle("Comments")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+}

@@ -38,6 +38,12 @@ struct Recipe: Codable, Identifiable, Equatable {
     var comments: [Comment]
 }
 
+extension Recipe {
+    var authorUsername: String {
+        return author?.username ?? authorName ?? "User"
+    }
+}
+
 struct Author: Codable, Identifiable, Equatable {
     var id: Int
     var username: String
@@ -53,6 +59,12 @@ struct Comment: Codable, Identifiable, Equatable {
     var source: String
     var authorName: String?
     var createdAt: Date
+}
+
+extension Comment {
+    var authorUsername: String {
+        return author?.username ?? authorName ?? "User"
+    }
 }
 
 let recipes: [Recipe] = [

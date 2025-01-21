@@ -33,18 +33,18 @@ struct HomeScreen: View {
                 GeometryReader { geo in
                     ScrollView {
                         WrapLayout(horizontalSpacing: 12, verticalSpacing: 12) {
-                            NavigationLink(destination: SwiftQueryView()) {
-                                Text("go")
-                            }
-                            Button("invalidate") {
-                                Task {
-                                    await QueryClient.shared
-                                        .invalidateQueries(matching: .init("todo"))
-                                }
-                            }
-                            Button("logout") {
-                                Auth.shared.clearToken()
-                            }
+//                            NavigationLink(destination: SwiftQueryView()) {
+//                                Text("go")
+//                            }
+//                            Button("invalidate") {
+//                                Task {
+//                                    await QueryClient.shared
+//                                        .invalidateQueries(matching: .init("todo"))
+//                                }
+//                            }
+//                            Button("logout") {
+//                                Auth.shared.clearToken()
+//                            }
                             
                             WidgetView(
                                 widget: .init(

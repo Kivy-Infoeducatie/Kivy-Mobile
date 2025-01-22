@@ -8,8 +8,8 @@
 import Foundation
 
 struct UpdateAccountDTO: Codable {
-    let email: String
-    let firstName: String
-    let lastName: String
-    let username: String
+    var email: String
+    var firstName: String
+    var lastName: String
+    var username: String
 }

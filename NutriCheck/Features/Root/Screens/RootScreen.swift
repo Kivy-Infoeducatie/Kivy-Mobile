@@ -73,6 +73,7 @@ struct NavigationWrapper<Content: View>: View {
         }
         .sheet(isPresented: $showAccount) {
             AccountScreen()
+                .presentationBackground(.thinMaterial)
         }
     }
 }

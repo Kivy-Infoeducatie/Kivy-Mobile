@@ -17,14 +17,6 @@ enum AccountQueries {
                     Router.getAccount
                 )
                 .validate()
-                .responseData { res in
-                    switch res.result {
-                    case .success(let data):
-                        print("success: \(String(data: data, encoding: .utf8))")
-                    case .failure(let err):
-                        print("error: \(err.localizedDescription)")
-                    }
-                }
                 .serializingDecodable(
                     Account.self
                 )

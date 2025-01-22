@@ -6,6 +6,8 @@
 //
 
 import Foundation
+import Toasts
+import SwiftUI
 
 // MARK: - Core Types
 
@@ -413,6 +415,8 @@ class PaginatedQuery<T>: ObservableObject {
     }
 }
 
+// MARK: - Mutation
+
 @MainActor
 class Mutation<Input, Output>: ObservableObject {
     @Published private(set) var state: LoadingState<Output> = .idle
@@ -488,6 +492,74 @@ class Mutation<Input, Output>: ObservableObject {
         }
         
         await currentTask?.value
+    }
+    
+    func execute(
+        _ input: Input,
+        onSuccess: ((Output) -> Void)? = nil,
+        onError: ((Error) -> Void)? = nil,
+        onLoading: (() -> Void)? = nil
+    ) {
+        currentTask?.cancel()
+        currentTask = Task { [weak self] in
+            guard let self = self else { return }
+            
+            self.state = .loading
+            onLoading?()
+            
+            do {
+                try Task.checkCancellation()
+                let result = try await self.mutationFn(input)
+                try Task.checkCancellation()
+                
+                self.state = .success(result)
+                onSuccess?(result)
+                
+                for key in self.invalidateKeys {
+                    await self.queryClient.invalidateQueries(matching: key)
+                }
+            } catch is CancellationError {
+                let error = QueryError.operationCancelled
+                self.state = .error(error)
+                onError?(error)
+            } catch {
+                self.state = .error(error)
+                onError?(error)
+            }
+        }
+    }
+    
+    func execute(
+        _ input: Input,
+        presenting toast: PresentToastAction,
+        successMessage: String,
+        errorTransform: @escaping (Error) -> String = { $0.localizedDescription },
+        onSuccess: ((Output) -> Void)? = nil,
+        onError: ((Error) -> Void)? = nil,
+        onLoading: (() -> Void)? = nil
+    ) {
+        execute(
+            input,
+            onSuccess: { output in
+                let toastValue = ToastValue(
+                    icon: Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green),
+                    message: successMessage
+                )
+                toast(toastValue)
+                onSuccess?(output)
+            },
+            onError: { error in
+                let toastValue = ToastValue(
+                    icon: Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red),
+                    message: errorTransform(error)
+                )
+                toast(toastValue)
+                onError?(error)
+            },
+            onLoading: onLoading
+        )
     }
 }
 

@@ -8,12 +8,20 @@
 import Foundation
 
 struct Account: Codable {
-    let id: Int
-    let email: String
-    let firstName: String
-    let lastName: String
-    let username: String
-    let picture: String?
-    let followers: Int
-    let follows: Int
+    var id: Int
+    var email: String
+    var firstName: String
+    var lastName: String
+    var username: String
+    var picture: String?
+    var followers: Int
+    var follows: Int
+    
+    var fullName: String {
+        return "\(firstName) \(lastName)"
+    }
+    
+    static var empty: Account {
+        return Account(id: 0, email: "", firstName: "", lastName: "", username: "", picture: nil, followers: 0, follows: 0)
+    }
 }

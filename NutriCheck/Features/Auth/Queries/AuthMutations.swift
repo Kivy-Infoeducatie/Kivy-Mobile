@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import Alamofire
 
 @MainActor
 enum AuthMutations {
@@ -30,7 +31,7 @@ enum AuthMutations {
         }
     }
 
-    static func signUp() -> Mutation<SignUpDTO, String> {
+    static func signUp() -> Mutation<SignUpDTO, Empty> {
         Mutation(
             mutationFn: { body in
                 try await api.request(
@@ -44,7 +45,7 @@ enum AuthMutations {
                 )
                 .validate()
                 .serializingDecodable(
-                    String.self,
+                    Empty.self,
                     emptyResponseCodes: [200]
                 )
                 .value

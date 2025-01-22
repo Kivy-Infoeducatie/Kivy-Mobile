@@ -10,6 +10,8 @@ import SwiftUI
 struct NavigationWrapper<Content: View>: View {
     let title: String
     let content: Content
+    
+    @State private var showAccount = false
 
     init(title: String, @ViewBuilder content: () -> Content) {
         self.title = title
@@ -47,7 +49,9 @@ struct NavigationWrapper<Content: View>: View {
                                                 .fill(.thinMaterial)
                                         }
                                 }
-                                Button {} label: {
+                                Button {
+                                    showAccount.toggle()
+                                } label: {
                                     Image(systemName: "person.fill")
                                         .resizable()
                                         .frame(width: 16, height: 16)
@@ -66,31 +70,9 @@ struct NavigationWrapper<Content: View>: View {
                         .ignoresSafeArea()
                     }
                 }
-//                .navigationTitle(title)
-//                .toolbar {
-//                    ToolbarItemGroup(placement: .topBarTrailing) {
-//                        HStack(spacing: 6) {
-//                            Button(action: {
-//                                print("Tapped")
-//                            }) {
-//                                Image(systemName: "magnifyingglass.circle.fill")
-//                                    .resizable()
-//                                    .frame(width: 28, height: 28)
-//                                    .fontWeight(.bold)
-//                                    .foregroundStyle(.primary.opacity(0.8))
-//                            }
-//                            Button(action: {
-//                                print("Tapped")
-//                            }) {
-//                                Image(systemName: "person.circle.fill")
-//                                    .resizable()
-//                                    .frame(width: 28, height: 28)
-//                                    .fontWeight(.bold)
-//                                    .foregroundStyle(.primary.opacity(0.8))
-//                            }
-//                        }
-//                    }
-//                }
+        }
+        .sheet(isPresented: $showAccount) {
+            AccountScreen()
         }
     }
 }

@@ -11,6 +11,8 @@ import SwiftUI
 struct RecipesTikTokScreen: View {
     let backAction: () -> Void
     let namespace: Namespace.ID
+    let recipes: [Recipe]
+    
     @State private var scrollPosition: Int?
     @Binding var offset: CGFloat
 
@@ -137,7 +139,13 @@ struct RecipesTikTokScreen: View {
 }
 
 #Preview {
-    RecipesTikTokScreen(backAction: {}, namespace: Namespace().wrappedValue, offset: .constant(0))
+    RecipesTikTokScreen(
+        backAction: {
+        },
+        namespace: Namespace().wrappedValue,
+        recipes: [],
+        offset: .constant(0)
+)
 }
 
 private extension [Recipe] {
@@ -182,7 +190,9 @@ struct CardView: View {
             showRecipe.toggle()
         }) {
             ZStack(alignment: .bottomLeading) {
-                CachedAsyncImage(url: URL(string: recipe.images[0])) { result in
+                CachedAsyncImage(
+                    url: URL(string: recipe.images.first ?? "")
+                ) { result in
                     switch result {
                     case .success(let image):
                         image
@@ -219,7 +229,7 @@ struct CardView: View {
                         .opacity(0.9)
                         .padding(.bottom, 4)
                         .multilineTextAlignment(.leading)
-                    Text(recipe.recipeDescription)
+                    Text(recipe.description)
                         .font(.callout)
                         .opacity(0.9)
                         .lineLimit(lineLimit)
@@ -238,7 +248,7 @@ struct CardView: View {
                                     .font(.caption.bold())
                                     .foregroundStyle(.secondary)
 
-                                Text(recipe.difficulty.rawValue)
+                                Text(recipe.difficulty.title)
                                     .font(.callout.bold())
                                     .foregroundStyle(recipe.difficulty.color)
                             }
@@ -253,11 +263,11 @@ struct CardView: View {
                             Spacer()
 
                             VStack {
-                                Text("Cooking time")
+                                Text("Time")
                                     .font(.caption.bold())
                                     .foregroundStyle(.secondary)
 
-                                Text("\(recipe.cookingTime)m")
+                                Text("\(recipe.totalTime)m")
                                     .font(.callout.bold())
                                     .foregroundStyle(.white)
                             }

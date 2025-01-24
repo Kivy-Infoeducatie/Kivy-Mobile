@@ -6,8 +6,8 @@
 //
 
 import Foundation
-import Toasts
 import SwiftUI
+import Toasts
 
 // MARK: - Core Types
 
@@ -562,6 +562,288 @@ class Mutation<Input, Output>: ObservableObject {
         )
     }
 }
+
+
+// MARK: - Query Combining
+
+protocol Queryable {
+    associatedtype Output
+    var state: LoadingState<Output> { get }
+}
+
+protocol QueryInvalidatable {
+    func invalidate() async
+}
+
+protocol QueryProtocol: Queryable, QueryInvalidatable {}
+
+extension Query: QueryProtocol {}
+
+@MainActor
+func combineQueries<T: Queryable>(_ queries: T...) -> LoadingState<[T.Output]> {
+    for query in queries {
+        if case .error(let error) = query.state {
+            return .error(error)
+        }
+    }
+    
+    if queries.contains(where: {
+        if case .loading = $0.state { return true }
+        return false
+    }) {
+        return .loading
+    }
+    
+    let values = queries.compactMap { query -> T.Output? in
+        if case .success(let value) = query.state {
+            return value
+        }
+        return nil
+    }
+    
+    if values.count == queries.count {
+        return .success(values)
+    }
+    
+    return .idle
+}
+
+class AnyQuery: QueryProtocol {
+    typealias Output = Any
+    
+    private let _state: () -> LoadingState<Any>
+    private let _invalidate: () async -> Void
+    
+    var state: LoadingState<Any> {
+        _state()
+    }
+    
+    init<Q: QueryProtocol>(_ query: Q) {
+        self._state = {
+            switch query.state {
+            case .idle:
+                return .idle
+            case .loading:
+                return .loading
+            case .success(let value):
+                return .success(value)
+            case .error(let error):
+                return .error(error)
+            }
+        }
+        self._invalidate = { await query.invalidate() }
+    }
+    
+    func invalidate() async {
+        await _invalidate()
+    }
+}
+
+@MainActor
+func combineQueries(_ queries: [AnyQuery]) -> LoadingState<[Any]> {
+    for query in queries {
+        if case .error(let error) = query.state {
+            return .error(error)
+        }
+    }
+    
+    if queries.contains(where: {
+        if case .loading = $0.state { return true }
+        return false
+    }) {
+        return .loading
+    }
+    
+    let values = queries.compactMap { query -> Any? in
+        if case .success(let value) = query.state {
+            return value
+        }
+        return nil
+    }
+    
+    if values.count == queries.count {
+        return .success(values)
+    }
+    
+    return .idle
+}
+
+func combineQueries<T1: Queryable, T2: Queryable>(
+    _ q1: T1,
+    _ q2: T2
+) -> LoadingState<(T1.Output, T2.Output)> {
+    switch (q1.state, q2.state) {
+    case (.success(let v1), .success(let v2)):
+        return .success((v1, v2))
+    case (.error(let error), _), (_, .error(let error)):
+        return .error(error)
+    case (.loading, _), (_, .loading):
+        return .loading
+    default:
+        return .idle
+    }
+}
+
+func combineQueries<T1: Queryable, T2: Queryable, T3: Queryable>(
+    _ q1: T1,
+    _ q2: T2,
+    _ q3: T3
+) -> LoadingState<(T1.Output, T2.Output, T3.Output)> {
+    switch (q1.state, q2.state, q3.state) {
+    case (.success(let v1), .success(let v2), .success(let v3)):
+        return .success((v1, v2, v3))
+    case (.error(let error), _, _), (_, .error(let error), _), (_, _, .error(let error)):
+        return .error(error)
+    case (.loading, _, _), (_, .loading, _), (_, _, .loading):
+        return .loading
+    default:
+        return .idle
+    }
+}
+
+struct CombinedQueriesView<Content: View, SuccessContent: View>: View {
+    let queries: [AnyQuery]
+    let content: Content
+    let successContent: ([Any]) -> SuccessContent
+    
+    init(
+        queries: [any QueryProtocol],
+        content: Content,
+        successContent: @escaping ([Any]) -> SuccessContent
+    ) {
+        self.queries = queries.map { query in
+            AnyQuery(query)
+        }
+        self.content = content
+        self.successContent = successContent
+    }
+    
+    var body: some View {
+        Group {
+            switch combineQueries(queries) {
+            case .success(let values):
+                successContent(values)
+            case .error(let error):
+                ErrorView(error: error.localizedDescription) {
+                    Task {
+                        for query in queries {
+                            await query.invalidate()
+                        }
+                    }
+                }
+            case .loading, .idle:
+                content
+            }
+        }
+    }
+}
+
+extension View {
+    func withCombinedQueries<Content: View, SuccessContent: View>(
+        _ queries: [any QueryProtocol],
+        @ViewBuilder loading: () -> Content,
+        @ViewBuilder success: @escaping ([Any]) -> SuccessContent
+    ) -> some View {
+        CombinedQueriesView(
+            queries: queries,
+            content: loading(),
+            successContent: success
+        )
+    }
+}
+
+extension View {
+    func withCombinedQueries<Q1: QueryProtocol, Q2: QueryProtocol, Content: View, SuccessContent: View>(
+        _ query1: Q1,
+        _ query2: Q2,
+        @ViewBuilder loading: () -> Content,
+        @ViewBuilder success: @escaping (Q1.Output, Q2.Output) -> SuccessContent
+    ) -> some View {
+        CombinedQueriesView(
+            queries: [query1, query2],
+            content: loading(),
+            successContent: { values in
+                guard
+                    let v1 = values[0] as? Q1.Output,
+                    let v2 = values[1] as? Q2.Output
+                else {
+                    return success(values[0] as! Q1.Output, values[1] as! Q2.Output)
+                }
+                return success(v1, v2)
+            }
+        )
+    }
+}
+
+// MARK: - Helpers
+
+struct QueryView<Output, LoadingContent: View, SuccessContent: View, ErrorContent: View>: View {
+    let query: Query<Output>
+    let content: LoadingContent
+    let successContent: (Output) -> SuccessContent
+    let errorContent: (Error) -> ErrorContent
+    
+    var body: some View {
+        Group {
+            switch query.state {
+            case .success(let value):
+                successContent(value)
+            case .error(let error):
+                errorContent(error)
+            case .loading, .idle:
+                content
+            }
+        }
+    }
+}
+
+extension View {
+    func withQuery<Output, LoadingContent: View, SuccessContent: View, ErrorContent: View>(
+        _ query: Query<Output>,
+        @ViewBuilder loading: () -> LoadingContent,
+        @ViewBuilder success: @escaping (Output) -> SuccessContent,
+        @ViewBuilder error: @escaping (Error) -> ErrorContent
+    ) -> some View {
+        QueryView(
+            query: query,
+            content: loading(),
+            successContent: success,
+            errorContent: error
+        )
+    }
+    
+    func withQueryError<Output, LoadingContent: View, SuccessContent: View>(
+        _ query: Query<Output>,
+        @ViewBuilder loading: () -> LoadingContent,
+        @ViewBuilder success: @escaping (Output) -> SuccessContent
+    ) -> some View {
+        QueryView(
+            query: query,
+            content: loading(),
+            successContent: success,
+            errorContent: { error in
+                ErrorView(error: error.localizedDescription) {
+                    Task {
+                        await query.invalidate()
+                    }
+                }
+            }
+        )
+    }
+    
+    // Convenience method with ProgressView
+    func withQueryProgress<Output, SuccessContent: View>(
+        _ query: Query<Output>,
+        @ViewBuilder success: @escaping (Output) -> SuccessContent
+    ) -> some View {
+        withQueryError(query) {
+            ProgressView()
+        } success: { value in
+            success(value)
+        }
+    }
+}
+
 
 // MARK: OLD
 

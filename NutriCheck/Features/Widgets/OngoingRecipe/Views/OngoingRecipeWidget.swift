@@ -58,7 +58,7 @@ struct OngoingRecipeWidget: View {
                             )
                             .frame(width: 20, height: 20)
 
-                            Text("Step \(viewModel.currentStepIndex + 1) of \(recipe.steps.count)")
+                            Text("Step \(viewModel.currentStepIndex + 1) of \(recipe.stepsCount)")
                                 .font(.headline.bold())
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)

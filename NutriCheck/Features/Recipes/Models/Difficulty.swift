@@ -9,9 +9,20 @@ import Foundation
 import SwiftUI
 
 enum Difficulty: String, CaseIterable, Codable {
-    case easy = "Easy"
-    case medium = "Medium"
-    case hard = "Hard"
+    case easy
+    case medium
+    case hard
+    
+    var title: String {
+        switch self {
+        case .easy:
+            return "Easy"
+        case .medium:
+            return "Medium"
+        case .hard:
+            return "Hard"
+        }
+    }
 
     var color: Color {
         switch self {

@@ -32,7 +32,7 @@ class OngoingRecipeViewModel: ObservableObject {
     
     func nextStep() {
         guard let recipe = recipe,
-              currentStepIndex < recipe.steps.count - 1 else { return }
+              currentStepIndex < recipe.stepsCount - 1 else { return }
         currentStepIndex += 1
         saveState()
     }
@@ -53,19 +53,21 @@ class OngoingRecipeViewModel: ObservableObject {
     // MARK: - Helper Properties
     var currentStep: String? {
         guard let recipe = recipe,
-              currentStepIndex < recipe.steps.count else { return nil }
-        return recipe.steps[currentStepIndex]
+              let steps = recipe.steps,
+              currentStepIndex < recipe.stepsCount else { return nil }
+        return steps[currentStepIndex]
     }
     
     var progress: Double {
         guard let recipe = recipe,
-              !recipe.steps.isEmpty else { return 0 }
-        return Double(currentStepIndex + 1) / Double(recipe.steps.count)
+              let steps = recipe.steps,
+              !steps.isEmpty else { return 0 }
+        return Double(currentStepIndex + 1) / Double(steps.count)
     }
     
     var isLastStep: Bool {
         guard let recipe = recipe else { return false }
-        return currentStepIndex == recipe.steps.count - 1
+        return currentStepIndex == recipe.stepsCount - 1
     }
     
     // MARK: - Private Methods

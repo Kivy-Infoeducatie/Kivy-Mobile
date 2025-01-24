@@ -70,7 +70,7 @@ struct OngoingRecipeScreen: View {
                             VStack(alignment: .leading) {
                                 Text(recipe.name)
                                     .font(.headline)
-                                Text("by \(recipe.authorName)")
+                                Text("by \(recipe.authorUsername)")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                             }
@@ -192,7 +192,7 @@ struct OngoingRecipeScreen: View {
                             Text("All Ingredients")
                                 .font(.title3.bold())
                             ForEach(
-                                Array(recipe.ingredients.enumerated()),
+                                Array((recipe.ingredients ?? []).enumerated()),
                                 id: \.offset
                             ) { _, ingredient in
                                 HStack(spacing: 2) {

@@ -32,14 +32,15 @@ struct RecipeScreen: View {
                 ScrollView {
                     VStack(spacing: 12) {
                         ZStack(alignment: .bottomLeading) {
-                            CachedAsyncImage(url: URL(string: recipe.images[0])) { result in
+                            CachedAsyncImage(url: URL(string: recipe.images.first ?? "")) { result in
                                 switch result {
                                 case .success(let image):
                                     image
                                         .resizable()
                                         .aspectRatio(contentMode: .fill)
                                         .frame(
-                                            width: max(geo.size.width - 40, 0)
+                                            width: max(geo.size.width - 40, 0),
+                                            height: 400
                                             //                                        height: height
                                         )
                                         .clipped()
@@ -68,7 +69,7 @@ struct RecipeScreen: View {
                                     .font(.callout.bold())
                                     .opacity(0.9)
                                     .padding(.bottom, 4)
-                                Text(recipe.recipeDescription)
+                                Text(recipe.description)
                                     .font(.callout)
                                     .opacity(0.9)
                                     .lineLimit(lineLimit)
@@ -88,7 +89,7 @@ struct RecipeScreen: View {
                         .padding(.top, 24)
                         .clipped()
                         .background {
-                            CachedAsyncImage(url: URL(string: recipe.images[0])) { result in
+                            CachedAsyncImage(url: URL(string: recipe.images.first ?? "")) { result in
                                 switch result {
                                 case .success(let image):
                                     image
@@ -113,20 +114,24 @@ struct RecipeScreen: View {
                         }
                         
                         HStack(spacing: 12) {
-                            StatCard(name: "Difficulty", value: recipe.difficulty.rawValue, valueColor: recipe.difficulty.color)
+                            StatCard(
+                                name: "Difficulty",
+                                value: recipe.difficulty.title,
+                                valueColor: recipe.difficulty.color
+                            )
                             
-                            StatCard(name: "Cooking time", value: "\(recipe.cookingTime) min")
+                            StatCard(name: "Time", value: "\(recipe.totalTime) min")
                         }
                         
                         HStack(spacing: 12) {
                             StatCard(
                                 name: "Calories",
-                                value: "\(recipe.calories.unwrappedToNA) kcal"
+                                value: "\((recipe.calories ?? 0).unwrappedToNA) kcal"
                             )
                             
                             StatCard(
                                 name: "Ingredients",
-                                value: "\(recipe.ingredients.count)"
+                                value: "\(recipe.ingredientsCount ?? 0)"
                             )
                         }
                         
@@ -214,12 +219,12 @@ struct RecipeScreen: View {
                         VStack(alignment: .leading) {
                             NavigationLinkSectionHeader(
                                 title: "Comments",
-                                destination: CommentsScreen(comments: recipe.comments)
+                                destination: CommentsScreen(comments: recipe.comments ?? [])
                             )
                             .padding(.bottom, 4)
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack {
-                                    ForEach(recipe.comments) { comment in
+                                    ForEach(recipe.comments ?? []) { comment in
                                         CommentCard(comment: comment)
                                             .frame(
                                                 width: 250,
@@ -258,7 +263,7 @@ struct RecipeScreen: View {
                             
                             VStack(spacing: 14) {
                                 ForEach(
-                                    Array(recipe.ingredients.enumerated()),
+                                    Array((recipe.ingredients ?? []).enumerated()),
                                     id: \.offset
                                 ) { _, ingredient in
                                     HStack(spacing: 2) {
@@ -290,7 +295,7 @@ struct RecipeScreen: View {
                                 .padding(.bottom, 4)
                             
                             ForEach(
-                                Array(recipe.steps.enumerated()),
+                                Array((recipe.steps ?? []).enumerated()),
                                 id: \.offset
                             ) { index, step in
                                 HStack(alignment: .center, spacing: 8) {
@@ -336,14 +341,14 @@ struct RecipeScreen: View {
                 OngoingRecipeScreen()
             }
             .sheet(isPresented: $showAddIngredients) {
-                AddIngredientsSheet(ingredients: recipe.ingredients)
+                AddIngredientsSheet(ingredients: recipe.ingredients ?? [])
             }
         }
     }
 }
 
 #Preview {
-    RecipeScreen(recipe: recipes[0])
+    RecipeScreen(recipe: recipeMocks[0])
         .environmentObject(OngoingRecipeViewModel())
 }
 

@@ -19,29 +19,29 @@ enum Router: URLRequestConvertible {
     case createRecipe(recipe: Recipe)
     case getRecipeRecommendations
     case getLikedRecipes
-    case getRecipe(id: String)
-    case updateRecipe(id: String, recipe: Recipe)
-    case deleteRecipe(id: String)
+    case getRecipe(id: Int)
+    case updateRecipe(id: Int, recipe: Recipe)
+    case deleteRecipe(id: Int)
     
     case createPost(post: CreatePostDTO)
-    case updatePost(id: String, post: UpdateRecipeDTO)
-    case deletePost(id: String)
+    case updatePost(id: Int, post: UpdateRecipeDTO)
+    case deletePost(id: Int)
     
-    case likeRecipe(id: String)
-    case unlikeRecipe(id: String)
+    case likeRecipe(id: Int)
+    case unlikeRecipe(id: Int)
     
-    case likePost(id: String)
-    case unlikePost(id: String)
+    case likePost(id: Int)
+    case unlikePost(id: Int)
     
     case getPreferences
     case updatePreferences(preferences: Preferences)
     
-    case followUser(id: String)
-    case unfollowUser(id: String)
+    case followUser(id: Int)
+    case unfollowUser(id: Int)
     
     
     var baseURL: String {
-        return "http://localhost:3000"
+        return "http://192.168.1.239:3000"
     }
     
     var path: String {

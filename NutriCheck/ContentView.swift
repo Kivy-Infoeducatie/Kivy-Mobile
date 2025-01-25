@@ -11,6 +11,7 @@ import Toasts
 
 struct ContentView: View {
     @StateObject private var ongoingRecipeViewModel = OngoingRecipeViewModel()
+    @StateObject private var savedRecipesViewModel = SavedRecipesViewModel()
     
     var body: some View {
         RootScreen()
@@ -19,6 +20,7 @@ struct ContentView: View {
             )
             .installToast(position: .bottom)
             .environmentObject(ongoingRecipeViewModel)
+            .environmentObject(savedRecipesViewModel)
     }
 }
 

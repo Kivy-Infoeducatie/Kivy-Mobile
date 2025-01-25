@@ -17,10 +17,7 @@ struct RecipesScreen: View {
     @State private var showShoppingList = false
 
     @StateObject private var recipes = RecipeQueries.getRecipeRecommendations()
-
-//    var heroRecipes: [Recipe] {
-//        Array(recipes.state.value?.prefix(3) ?? [Recipe.EmptyRecipe, Recipe.EmptyRecipe, Recipe.EmptyRecipe])
-//    }
+    @StateObject private var recommendationsViewModel = RecommendationsViewModel()
 
     var body: some View {
         NavigationStack {
@@ -31,7 +28,7 @@ struct RecipesScreen: View {
                             RecipesHeroPlaceHolder(namespace: namespace, geo: geo, showTikTok: $showTikTok)
                         }, success: { recipes in
                             ForEach(
-                                Array(recipes.reversed().enumerated()),
+                                Array(recommendationsViewModel.recommendations.reversed().enumerated()),
                                 id: \.offset
                             ) { index, recipe in
                                 CachedAsyncImage(
@@ -49,7 +46,7 @@ struct RecipesScreen: View {
                                             .ignoresSafeArea()
                                             .blur(radius: 100, opaque: true)
                                             .opacity(Double(
-                                                CGFloat(recipes.count - index) - scrollOffset)
+                                                CGFloat(recommendationsViewModel.recommendations.count - index) - scrollOffset)
                                             )
                                     case .empty:
                                         Color.black
@@ -81,7 +78,12 @@ struct RecipesScreen: View {
                             withQueryError(recipes, loading: {
                                 RecipesHeroPlaceHolder(namespace: namespace, geo: geo, showTikTok: $showTikTok)
                             }, success: { recipes in
-                                let heroRecipes = Array(recipes.prefix(3))
+                                let upperBound = min(
+                                    recommendationsViewModel.currentRecommendationIndex + 3,
+                                    recommendationsViewModel.recommendations.count
+                                )
+                                let lowerBound = upperBound - 3
+                                let heroRecipes = Array(recommendationsViewModel.recommendations[lowerBound ..< upperBound])
 
                                 VStack(alignment: .leading) {
                                     Text("Discover new recipes")
@@ -91,6 +93,8 @@ struct RecipesScreen: View {
 
                                     Button {
                                         withAnimation {
+//                                            recommendationsViewModel
+//                                                .addRecommendations(recipes)
                                             showTikTok.toggle()
                                         }
                                     } label: {
@@ -116,7 +120,7 @@ struct RecipesScreen: View {
                                                 .rotationEffect(.degrees(5.0 * Double(index - 1)))
                                                 .zIndex(index == 1 ? 10 : 0)
                                                 .opacity(index == 1 ? 1 : 0.7)
-                                                .matchedGeometryEffect(id: "card\(index)", in: namespace)
+                                                .matchedGeometryEffect(id: "card\(lowerBound + index)", in: namespace)
                                             }
                                         }
                                         .frame(width: geo.size.width, alignment: .center)
@@ -125,47 +129,6 @@ struct RecipesScreen: View {
                                 }
                                 .padding(.top, 60)
                             })
-//                            VStack(alignment: .leading) {
-//                                Text("Discover new recipes")
-//                                    .font(.title3.bold())
-//                                    .padding(.horizontal)
-//                                    .matchedGeometryEffect(id: "text", in: namespace)
-//
-//                                Button {
-//                                    withAnimation {
-//                                        showTikTok.toggle()
-//                                    }
-//                                } label: {
-//                                    ZStack {
-//                                        ForEach(
-//                                            Array(heroRecipes.enumerated()),
-//                                            id: \.offset
-//                                        ) { index, recipe in
-//                                            CardView(
-//                                                recipe: recipe,
-//                                                geo: geo,
-//                                                height: 350,
-//                                                padding: 60,
-//                                                showStats: false
-//                                            )
-//                                            .frame(
-//                                                width: geo.size.width - 120 < 0 ? 0 : geo.size.width - 120,
-//                                                height: 350,
-//                                                alignment: .bottomLeading
-//                                            )
-//                                            .padding(.horizontal, 60)
-//                                            .padding(.leading, CGFloat(index - 1) * 60)
-//                                            .rotationEffect(.degrees(5.0 * Double(index - 1)))
-//                                            .zIndex(index == 1 ? 10 : 0)
-//                                            .opacity(index == 1 ? 1 : 0.7)
-//                                            .matchedGeometryEffect(id: "card\(index)", in: namespace)
-//                                        }
-//                                    }
-//                                    .frame(width: geo.size.width, alignment: .center)
-//                                }
-//                                .padding(.top)
-//                            }
-//                            .padding(.top, 60)
                             VStack(alignment: .leading) {
                                 Text("Shopping List")
                                     .font(.title3.bold())
@@ -179,64 +142,8 @@ struct RecipesScreen: View {
                                 }
                                 .matchedTransitionSource(id: "shopping_list", in: namespace)
 
-                                NavigationLinkSectionHeader(
-                                    title: "Liked Recipes",
-                                    destination: Text("ceva")
-                                )
-                                .padding(.top)
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 16) {
-                                        ForEach(recipeMocks) { recipe in
-                                            SmallRecipeCard(recipe: recipe)
-                                        }
-                                    }
-                                }
-                                .scrollClipDisabled()
-
-                                NavigationLinkSectionHeader(
-                                    title: "Suggestions for you",
-                                    destination: Text("ceva")
-                                )
-                                .padding(.top)
-
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 16) {
-                                        ForEach(recipeMocks) { recipe in
-                                            SmallRecipeCard(recipe: recipe)
-                                        }
-                                    }
-                                }
-                                .scrollClipDisabled()
-
-                                NavigationLinkSectionHeader(
-                                    title: "Featured recipes",
-                                    destination: Text("ceva")
-                                )
-                                .padding(.top)
-
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 16) {
-                                        ForEach(recipeMocks) { recipe in
-                                            SmallRecipeCard(recipe: recipe)
-                                        }
-                                    }
-                                }
-                                .scrollClipDisabled()
-
-                                NavigationLinkSectionHeader(
-                                    title: "Recipes for the season",
-                                    destination: Text("ceva")
-                                )
-                                .padding(.top)
-
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 16) {
-                                        ForEach(recipeMocks) { recipe in
-                                            SmallRecipeCard(recipe: recipe)
-                                        }
-                                    }
-                                }
-                                .scrollClipDisabled()
+                                SavedRecipesCarousel()
+                                SuggestedRecipesCarousel()
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal)
@@ -256,24 +163,33 @@ struct RecipesScreen: View {
                 }
 
                 if showTikTok {
-                    withQueryError(recipes, loading: {
-//                        RecipesHeroPlaceHolder(namespace: namespace, geo: geo, showTikTok: $showTikTok)
-                        Text("load")
-                    }, success: { recipes in
-                        RecipesTikTokScreen(
-                            backAction: {
-                                showTikTok.toggle()
-                            },
-                            namespace: namespace,
-                            recipes: recipes,
-                            offset: $scrollOffset
-                        )
-                        .padding(.bottom, 40)
-                        .frame(maxHeight: .infinity)
-                        .transition(.opacity)
-                        .zIndex(1)
-                    })
+                    withQueryError(
+                        recipes,
+                        loading: {
+                            ProgressView()
+                        }, success: { recipes in
+                            RecipesTikTokScreen(
+                                backAction: {
+                                    showTikTok.toggle()
+                                },
+                                namespace: namespace,
+                                recipes: recommendationsViewModel.recommendations,
+                                recommendationsViewModel: recommendationsViewModel,
+                                offset: $scrollOffset
+                            )
+                            .padding(.bottom, 40)
+                            .frame(maxHeight: .infinity)
+                            .transition(.opacity)
+                            .zIndex(1)
+                        }
+                    )
                 }
+            }
+        }
+        .onAppear {
+            _ = recipes.onSuccess { _ in
+                recommendationsViewModel
+                    .addRecommendations(recipes.state.value ?? [])
             }
         }
     }
@@ -290,15 +206,15 @@ struct ShoppingListPreview: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("\(shoppingListItems.count) items")
                 .font(.title3.bold())
-
+            
             if !shoppingListItems.isEmpty {
-                VStack(spacing: 8) {
-                    ForEach(Array(shoppingListItems.prefix(3))) { item in
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(Array(shoppingListItems.prefix(5))) { item in
                         ShoppingListItemRow(item: item)
                     }
-
-                    if shoppingListItems.count > 3 {
-                        Text("and \(shoppingListItems.count - 3) more items")
+                    
+                    if shoppingListItems.count > 5 {
+                        Text("and \(shoppingListItems.count - 5) more items")
                             .foregroundColor(.secondary)
                             .font(.subheadline)
                             .padding(.top, 4)
@@ -317,6 +233,13 @@ struct ShoppingListPreview: View {
 
 struct SmallRecipeCard: View {
     let recipe: Recipe
+    let isExpanded: Bool
+    
+    init(recipe: Recipe, isExpanded: Bool = false) {
+        self.recipe = recipe
+        self.isExpanded = isExpanded
+    }
+    
     @Namespace private var namespace
     @State private var showRecipe = false
 
@@ -356,14 +279,16 @@ struct SmallRecipeCard: View {
                         Text("\(recipe.calories.unwrappedToNA)kcal")
                         Divider()
                             .frame(height: 12)
-                        Text("\(recipe.cookingTime)m")
+                        Text("\(recipe.totalTime)m")
                     }
                     .font(.system(size: 13, weight: .semibold))
                     .opacity(0.7)
                 }
                 .padding(.vertical)
+                .padding(.trailing, 4)
             }
-            .frame(width: 250, height: 80, alignment: .leading)
+            .frame(width: isExpanded ? nil : 250, height: 80, alignment: .leading)
+            .frame(maxWidth: isExpanded ? .infinity : nil, alignment: .leading)
             .background {
                 RoundedRectangle(cornerRadius: 20)
                     .fill(.thinMaterial)
@@ -398,31 +323,21 @@ struct RecipesHeroPlaceHolder: View {
     let namespace: Namespace.ID
     let geo: GeometryProxy
     @Binding var showTikTok: Bool
-    
+
     var body: some View {
         VStack(alignment: .leading) {
             Text("Discover new recipes")
                 .font(.title3.bold())
                 .padding(.horizontal)
                 .matchedGeometryEffect(id: "text", in: namespace)
-            
-            Button {
-                withAnimation {
-                    showTikTok.toggle()
-                }
-            } label: {
-                ZStack {
-                    ForEach(
-                        Array([Recipe.EmptyRecipe, Recipe.EmptyRecipe, Recipe.EmptyRecipe].enumerated()),
-                        id: \.offset
-                    ) { index, recipe in
-                        CardView(
-                            recipe: recipe,
-                            geo: geo,
-                            height: 350,
-                            padding: 60,
-                            showStats: false
-                        )
+
+            ZStack {
+                ForEach(
+                    Array([Recipe.EmptyRecipe, Recipe.EmptyRecipe, Recipe.EmptyRecipe].enumerated()),
+                    id: \.offset
+                ) { index, _ in
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(.regularMaterial)
                         .frame(
                             width: geo.size.width - 120 < 0 ? 0 : geo.size.width - 120,
                             height: 350,
@@ -433,13 +348,97 @@ struct RecipesHeroPlaceHolder: View {
                         .rotationEffect(.degrees(5.0 * Double(index - 1)))
                         .zIndex(index == 1 ? 10 : 0)
                         .opacity(index == 1 ? 1 : 0.7)
-                        .matchedGeometryEffect(id: "card\(index)", in: namespace)
-                    }
                 }
-                .frame(width: geo.size.width, alignment: .center)
             }
+            .frame(width: geo.size.width, alignment: .center)
             .padding(.top)
         }
         .padding(.top, 60)
+    }
+}
+
+struct SuggestedRecipesCarousel: View {
+    @StateObject private var recipes = RecipeQueries.getRecipeRecommendations()
+    
+    var body: some View {
+        NavigationLinkSectionHeader(
+            title: "Suggestions for you",
+            destination: SuggestedRecipesExpandedScreen()
+        )
+        .padding(.top)
+        withQueryProgress(recipes) { recipes in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 16) {
+                    ForEach(recipes) { recipe in
+                        SmallRecipeCard(recipe: recipe)
+                    }
+                }
+            }
+            .scrollClipDisabled()
+        }
+    }
+}
+
+struct SuggestedRecipesExpandedScreen: View {
+    @StateObject private var recipes = RecipeQueries.getRecipeRecommendations()
+    
+    var body: some View {
+        NavigationStack {
+            withQueryProgress(recipes) { recipes in
+                ScrollView {
+                    VStack(spacing: 12) {
+                        ForEach(recipes) { recipe in
+                            SmallRecipeCard(recipe: recipe, isExpanded: true)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                }
+                .scrollClipDisabled()
+                .safeAreaPadding(.bottom, 60)
+            }
+            .navigationTitle("Suggested recipes")
+        }
+    }
+}
+
+struct SavedRecipesCarousel: View {
+    @EnvironmentObject private var savedRecipes: SavedRecipesViewModel
+    
+    var body: some View {
+        NavigationLinkSectionHeader(
+            title: "Saved recipes",
+            destination: SavedRecipesExpandedScreen()
+        )
+        .padding(.top)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 16) {
+                ForEach(savedRecipes.recipes) { recipe in
+                    SmallRecipeCard(recipe: recipe)
+                }
+            }
+        }
+        .scrollClipDisabled()
+    }
+}
+
+struct SavedRecipesExpandedScreen: View {
+    @EnvironmentObject private var savedRecipes: SavedRecipesViewModel
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 12) {
+                    ForEach(savedRecipes.recipes) { recipe in
+                        SmallRecipeCard(recipe: recipe, isExpanded: true)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+            }
+            .scrollClipDisabled()
+            .safeAreaPadding(.bottom, 60)
+        }
+        .navigationTitle("Saved recipes")
     }
 }

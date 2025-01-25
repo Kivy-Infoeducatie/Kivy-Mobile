@@ -15,7 +15,7 @@ struct CustomTabBar: View {
         HStack(spacing: 0) {
             ForEach(TabModel.allCases, id: \.title) { tab in
                 Button {
-                    withAnimation {
+                    withAnimation(.snappy(duration: 0.25)) {
                         selectedTab = tab
                     }
                 } label: {
@@ -46,6 +46,10 @@ struct CustomTabBar: View {
             Capsule()
                 .fill(.ultraThinMaterial)
         }
+        .sensoryFeedback(
+            .impact(flexibility: .soft, intensity: 0.8),
+            trigger: selectedTab
+        )
     }
 }
 

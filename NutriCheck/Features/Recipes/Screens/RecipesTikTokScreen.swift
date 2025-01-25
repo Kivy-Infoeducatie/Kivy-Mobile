@@ -12,11 +12,14 @@ struct RecipesTikTokScreen: View {
     let backAction: () -> Void
     let namespace: Namespace.ID
     let recipes: [Recipe]
-    
-    @State private var scrollPosition: Int?
+    @ObservedObject var recommendationsViewModel: RecommendationsViewModel
+
     @Binding var offset: CGFloat
+    @State private var scrollPosition: Int?
 
     @Namespace private var cardNamespace
+
+    @StateObject private var recommend = RecipeQueries.getRecipeRecommendationsMutation()
 
     var body: some View {
         NavigationStack {
@@ -101,6 +104,18 @@ struct RecipesTikTokScreen: View {
                         let maxValue = CGFloat(recipes.count - 1)
                         offset = min(max(newValue, 0), maxValue)
                     }
+                    .onChange(of: scrollPosition) {
+                        recommendationsViewModel.setIndex(scrollPosition ?? 0)
+
+                        if scrollPosition == recipes.count - 3 {
+                            recommend.execute((), onSuccess: { recipes in
+                                recommendationsViewModel.addRecommendations(recipes)
+                            })
+                        }
+                    }
+                    .onAppear {
+                        scrollPosition = recommendationsViewModel.currentRecommendationIndex
+                    }
                 }
                 .frame(height: 500)
             }
@@ -138,15 +153,15 @@ struct RecipesTikTokScreen: View {
     }
 }
 
-#Preview {
-    RecipesTikTokScreen(
-        backAction: {
-        },
-        namespace: Namespace().wrappedValue,
-        recipes: [],
-        offset: .constant(0)
-)
-}
+// #Preview {
+//    RecipesTikTokScreen(
+//        backAction: {
+//        },
+//        namespace: Namespace().wrappedValue,
+//        recipes: [],
+//        offset: .constant(0)
+// )
+// }
 
 private extension [Recipe] {
     func zIndex(_ item: Recipe) -> CGFloat {
@@ -168,6 +183,8 @@ struct CardView: View {
     let height: CGFloat
     let padding: CGFloat
     let showStats: Bool
+
+    @EnvironmentObject private var savedRecipesViewModel: SavedRecipesViewModel
 
     init(
         recipe: Recipe,
@@ -213,22 +230,50 @@ struct CardView: View {
                 }
 
                 VariableBlurView(direction: .blurredBottomClearTop)
-                    .frame(height: showStats ? 180 : 80)
+                    .frame(height: showStats ? 220 : 120)
                 LinearGradient(
                     colors: [.clear, .black.opacity(0.7)],
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .frame(height: showStats ? 180 : 80)
+                .frame(height: showStats ? 220 : 120)
                 VStack(alignment: .leading) {
-                    Text(recipe.name)
-                        .font(.title2.bold())
-                        .multilineTextAlignment(.leading)
-                    Text("by \(recipe.authorUsername)")
-                        .font(.callout.bold())
-                        .opacity(0.9)
-                        .padding(.bottom, 4)
-                        .multilineTextAlignment(.leading)
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text(recipe.name)
+                                .font(.title2.bold())
+                                .multilineTextAlignment(.leading)
+                            Text("by \(recipe.authorUsername)")
+                                .font(.callout.bold())
+                                .opacity(0.9)
+                                .padding(.bottom, 4)
+                                .multilineTextAlignment(.leading)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        if showStats {
+                            Button {
+                                if savedRecipesViewModel.isSaved(recipe) {
+                                    withAnimation {
+                                        savedRecipesViewModel.removeRecipe(recipe)
+                                    }
+                                } else {
+                                    withAnimation {
+                                        savedRecipesViewModel.saveRecipe(recipe)
+                                    }
+                                }
+                            } label: {
+                                Image(systemName: "bookmark.fill")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 24, height: 24)
+                                    .foregroundColor(
+                                        savedRecipesViewModel.isSaved(recipe) ? .yellow : .white
+                                    )
+                                    .opacity(0.8)
+                            }
+                        }
+                    }
                     Text(recipe.description)
                         .font(.callout)
                         .opacity(0.9)

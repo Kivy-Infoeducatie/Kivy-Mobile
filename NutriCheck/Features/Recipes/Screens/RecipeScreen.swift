@@ -9,7 +9,7 @@ import CachedAsyncImage
 import SwiftUI
 
 struct RecipeScreen: View {
-    let recipe: Recipe
+    @State private var recipe: Recipe
     
     @State private var lineLimit: Int = 2
     @State private var servings: Int = 2
@@ -19,17 +19,34 @@ struct RecipeScreen: View {
     @State private var showAddIngredients: Bool = false
     
     @EnvironmentObject private var ongoingRecipe: OngoingRecipeViewModel
-    
+    @EnvironmentObject private var savedRecipes: SavedRecipesViewModel
     @Environment(\.dismiss) var dismiss
     
+    @StateObject private var detailedRecipe: Query<Recipe>
+    
     private var recipeStarted: Bool {
-        ongoingRecipe.recipe != nil && ongoingRecipe.recipe == recipe
+        ongoingRecipe.recipe != nil && ongoingRecipe.recipe?.id == recipe.id
     }
-
+    
+    init(recipe: Recipe) {
+        self._recipe = State(initialValue: recipe)
+        self._detailedRecipe = StateObject(wrappedValue: RecipeQueries.getRecipe(recipe.id))
+    }
+    
     var body: some View {
         NavigationStack {
             GeometryReader { geo in
                 ScrollView {
+                    switch detailedRecipe.state {
+                    case .idle:
+                        Text("Idle")
+                    case .loading:
+                        Text("Loading")
+                    case .success(let t):
+                        Text("Success")
+                    case .error(let error):
+                        Text("Error \(error.localizedDescription)")
+                    }
                     VStack(spacing: 12) {
                         ZStack(alignment: .bottomLeading) {
                             CachedAsyncImage(url: URL(string: recipe.images.first ?? "")) { result in
@@ -62,27 +79,51 @@ struct RecipeScreen: View {
                                 endPoint: .bottom
                             )
                             .frame(height: 130)
-                            VStack(alignment: .leading) {
-                                Text(recipe.name)
-                                    .font(.title2.bold())
-                                Text("by \(recipe.authorUsername)")
-                                    .font(.callout.bold())
-                                    .opacity(0.9)
-                                    .padding(.bottom, 4)
-                                Text(recipe.description)
-                                    .font(.callout)
-                                    .opacity(0.9)
-                                    .lineLimit(lineLimit)
-                                    .onTapGesture {
+                            HStack {
+                                VStack(alignment: .leading) {
+                                    Text(recipe.name)
+                                        .font(.title2.bold())
+                                    Text("by \(recipe.authorUsername)")
+                                        .font(.callout.bold())
+                                        .opacity(0.9)
+                                        .padding(.bottom, 4)
+                                    Text(recipe.description)
+                                        .font(.callout)
+                                        .opacity(0.9)
+                                        .lineLimit(lineLimit)
+                                        .onTapGesture {
+                                            withAnimation {
+                                                lineLimit = lineLimit == 2 ? 10 : 2
+                                            }
+                                        }
+                                        .multilineTextAlignment(.leading)
+                                        .padding(.bottom, 10)
+                                }
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                
+                                Button {
+                                    if savedRecipes.isSaved(recipe) {
                                         withAnimation {
-                                            lineLimit = lineLimit == 2 ? 10 : 2
+                                            savedRecipes.removeRecipe(recipe)
+                                        }
+                                    } else {
+                                        withAnimation {
+                                            savedRecipes.saveRecipe(recipe)
                                         }
                                     }
-                                    .multilineTextAlignment(.leading)
-                                    .padding(.bottom, 10)
+                                } label: {
+                                    Image(systemName: "bookmark.fill")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 24, height: 24)
+                                        .foregroundColor(
+                                            savedRecipes.isSaved(recipe) ? .yellow : .white
+                                        )
+                                        .opacity(0.8)
+                                }
                             }
                             .padding(16)
-                            .foregroundStyle(.white)
                         }
                         .clipShape(.rect(cornerRadius: 20))
                         .frame(height: 400)
@@ -136,43 +177,46 @@ struct RecipeScreen: View {
                         }
                         
                         HStack {
-                            HStack(spacing: 0) {
-                                Button {
-                                    servings -= 1
-                                } label: {
-                                    Image(systemName: "minus")
+                            if let servings = recipe.servings {
+                                HStack(spacing: 0) {
+//                                    Button {
+//                                        servings -= 1
+//                                    } label: {
+//                                        Image(systemName: "minus")
+//                                    }
+//                                    .disabled(servings == 1)
+//                                    .frame(maxWidth: .infinity, alignment: .center)
+//
+//                                    Divider()
+                                    
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "person.2.fill")
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(width: 16, height: 16)
+                                        Text("\(servings)")
+                                            .font(.callout.bold())
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    
+//                                    Divider()
+//                                    
+//                                    Button {
+//                                        servings += 1
+//                                    } label: {
+//                                        Image(systemName: "plus")
+//                                    }
+//                                    .disabled(servings == 10)
+//                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    //                                .background(Color.red)
                                 }
-                                .disabled(servings == 1)
-                                .frame(maxWidth: .infinity, alignment: .center)
-
-                                Divider()
-                                
-                                HStack(spacing: 4) {
-                                    Image(systemName: "person.2.fill")
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 16, height: 16)
-                                    Text("\(servings)")
-                                        .font(.callout.bold())
-                                }
-                                .frame(maxWidth: .infinity)
-
-                                Divider()
-                                
-                                Button {
-                                    servings += 1
-                                } label: {
-                                    Image(systemName: "plus")
-                                }
-                                .disabled(servings == 10)
-                                .frame(maxWidth: .infinity, alignment: .center)
-//                                .background(Color.red)
+                                //                            .frame(maxWidth: .infinity)
+                                .frame(width: 50)
+//                                .frame(width: 130)
+                                .padding(.vertical)
+                                .background(.thinMaterial)
+                                .clipShape(Capsule())
                             }
-//                            .frame(maxWidth: .infinity)
-                            .frame(width: 130)
-                            .padding(.vertical)
-                            .background(.thinMaterial)
-                            .clipShape(Capsule())
                             
                             Button {
                                 if !recipeStarted {
@@ -342,6 +386,15 @@ struct RecipeScreen: View {
             }
             .sheet(isPresented: $showAddIngredients) {
                 AddIngredientsSheet(ingredients: recipe.ingredients ?? [])
+            }
+            .onAppear {
+                Task {
+                    _ = detailedRecipe.onSuccess { recipe in
+                        self.recipe = recipe
+                        print("success")
+                    }
+                    await detailedRecipe.execute()
+                }
             }
         }
     }

@@ -74,11 +74,11 @@ struct ShoppingListItemRow: View {
     @State private var deletionTimer: Timer?
     
     private var quantityText: String {
-        if item.unit == "pcs" {
+//        if item.unit == "pcs" {
             return String(item.quantity)
-        } else {
-            return String(format: "%.2f", item.quantity)
-        }
+//        } else {
+//            return String(format: "%.2f", item.quantity)
+//        }
     }
     
     var body: some View {

@@ -1,14 +1,22 @@
 //
-//  MediumSuggestedRecipesWidget.swift
+//  SmallSuggestedRecipeWidget.swift
 //  NutriCheck
 //
-//  Created by Alexandru Simedrea on 19.12.2024.
+//  Created by Alexandru Simedrea on 27.01.2025.
 //
 
-import CachedAsyncImage
 import SwiftUI
+import CachedAsyncImage
 
-struct MediumSuggestedRecipesWidget: View {
+struct SmallSuggestedRecipeWidget: View {
+    let widget: Widget
+    let height: CGFloat?
+    
+    init(widget: Widget, height: CGFloat? = nil) {
+        self.widget = widget
+        self.height = height
+    }
+    
     @StateObject private var recipes = RecipeQueries.getRecipeRecommendations()
     @Namespace var namespace
     @State private var showRecipeDetails = false
@@ -16,9 +24,9 @@ struct MediumSuggestedRecipesWidget: View {
     var body: some View {
         withQueryProgress(recipes) { recipes in
             let recipe = recipes.first ?? Recipe.EmptyRecipe
-
+            
             Button(action: { showRecipeDetails.toggle() }) {
-                HStack(spacing: 20) {
+                ZStack(alignment: .bottomLeading) {
                     CachedAsyncImage(
                         url: URL(
                             string: recipe.images.first ?? ""
@@ -30,40 +38,36 @@ struct MediumSuggestedRecipesWidget: View {
                         case .success(let image):
                             image
                                 .resizable()
-                                .scaledToFill()
-                                .frame(width: 100, height: 100)
-                                .clipShape(.rect(cornerRadius: 16))
+                                .aspectRatio(contentMode: .fill)
+                                .frame(height: height)
                         case .failure:
                             Image(systemName: "photo")
                         default:
                             Image(systemName: "photo")
                         }
                     }
+                    
+                    VariableBlurView(direction: .blurredBottomClearTop)
+                        .frame(height: 80)
                     VStack(alignment: .leading) {
-                        Text(recipe.name)
-                            .font(.headline.bold())
-                            .multilineTextAlignment(.leading)
-                        Text("by \(recipe.authorUsername)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .padding(.bottom, 10)
-                        HStack {
-                            Text("\(recipe.totalTime) m")
-                                .font(.subheadline)
-                            Divider()
-                                .frame(height: 12)
-                            Text("\(recipe.difficulty.title)")
-                                .font(.subheadline)
-                                .foregroundStyle(recipe.difficulty.color)
-                            //                        Divider()
-                            //                            .frame(height: 12)
-                            //                        Text("30m")
-                            //                            .font(.subheadline)
+                        HStack(spacing: 4) {
+                            Image(systemName: widget.type.icon)
+                            Text(widget.type.title)
+                                .font(.system(size: 13, weight: .semibold))
                         }
+                        .opacity(0.9)
+                        Text(recipe.name)
+                            .font(.callout.bold())
+                            .lineLimit(1)
+                        Text("by \(recipe.authorUsername)")
+                            .font(.caption.bold())
+                            .lineLimit(1)
                     }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
             .matchedTransitionSource(id: "recipe\(recipe.id)", in: namespace)
             .fullScreenCover(isPresented: $showRecipeDetails) {
                 RecipeScreen(recipe: recipe)
@@ -73,6 +77,7 @@ struct MediumSuggestedRecipesWidget: View {
     }
 }
 
-#Preview {
-    MediumSuggestedRecipesWidget()
-}
+
+//#Preview {
+//    SmallSuggestedRecipeWidget()
+//}

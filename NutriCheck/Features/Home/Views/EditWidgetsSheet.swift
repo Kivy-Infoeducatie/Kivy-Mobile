@@ -64,18 +64,20 @@ struct EditWidgetsSheet: View {
 
                 Section("Add a widget") {
                     ForEach(WidgetType.allCases, id: \WidgetType.id) { type in
-                        Button {
-                            widgetType = type
-                            showAddWidget = true
-                        } label: {
-                            HStack {
-                                Image(systemName: type.icon)
-                                    .foregroundStyle(type.color)
-                                Text("\(type.name)")
-
-                                Spacer()
-
-                                Image(systemName: "plus.circle")
+                        if !type.hidden {
+                            Button {
+                                widgetType = type
+                                showAddWidget = true
+                            } label: {
+                                HStack {
+                                    Image(systemName: type.icon)
+                                        .foregroundStyle(type.color)
+                                    Text("\(type.name)")
+                                    
+                                    Spacer()
+                                    
+                                    Image(systemName: "plus.circle")
+                                }
                             }
                         }
                     }

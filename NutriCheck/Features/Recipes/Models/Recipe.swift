@@ -17,14 +17,14 @@ struct Recipe: Codable, Identifiable, Equatable {
     var description: String
     var ingredientsCount: Int?
     var calories: Double?
-    var likesCount: Int
+    var likesCount: Int?
     var authorName: String?
     var images: [String]
     var difficulty: Difficulty
     var author: Author?
     
     // Optional properties that aren't in the JSON should be declared without default values
-    var createdAt: Date?
+    var createdAt: String?
     var preparationTime: Int?
     var steps: [String]?
     var ingredients: [Ingredient]?
@@ -38,7 +38,7 @@ struct Recipe: Codable, Identifiable, Equatable {
     var fiber: Double?
     var servings: Int?
     var servingsSize: Int?
-    var comments: [Comment]?
+    var posts: [Comment]?
 }
 
 extension Recipe {
@@ -79,14 +79,14 @@ struct Author: Codable, Identifiable, Equatable {
 }
 
 struct Comment: Codable, Identifiable, Equatable {
-    var id: Int
+    var id: Int?
     var author: Author?
     var content: String
-    var rating: Int
-    var likesCount: Int
+    var rating: Int?
+    var likesCount: Int?
     var source: String
     var authorName: String?
-    var createdAt: Date
+    var createdAt: String
 }
 
 extension Comment {

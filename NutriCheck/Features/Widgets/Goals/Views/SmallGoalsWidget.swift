@@ -8,37 +8,76 @@
 import SwiftUI
 
 struct SmallGoalsWidget: View {
-    @State private var outterRingValue: CGFloat = 0.5
-    @State private var middleRingValue: CGFloat = 0.7
-    @State private var innerRingValue: CGFloat = 0.9
+    @EnvironmentObject var health: HealthKitViewModel
+    @EnvironmentObject var goals: GoalsViewModel
+    
+    @State private var steps: Double = 0
+    @State private var calories: Double = 0
+    @State private var distance: Double = 0
+    
+    @State private var calorieSamples: [(date: Date, value: Double)] = []
+    @State private var stepSamples: [(date: Date, value: Double)] = []
+    @State private var distanceSamples: [(date: Date, value: Double)] = []
     
     var body: some View {
-        StackedActivityRingView(
-            outterRingValue: $outterRingValue,
-            middleRingValue: $middleRingValue,
-            innerRingValue: $innerRingValue,
-            config: .init(lineWidth: 10)
-        )
-        .frame(width: 50, height: 50)
-        .padding(.vertical, 8)
-        Spacer()
-        Text("7546/10000")
-            .font(.system(.callout, design: .rounded))
-            .bold()
+        VStack(alignment: .leading) {
+            StackedActivityRingView(
+                outterRingValue: calories / goals.activeEnergyGoal,
+                middleRingValue: steps / goals.stepsGoal,
+                innerRingValue: distance / goals.distanceGoal,
+                config: .init(lineWidth: 10)
+            )
+            .frame(width: 50, height: 50)
+            .padding(.vertical, 8)
+            Spacer()
+            Text("\(Int(calories)) / \(Int(goals.activeEnergyGoal))")
+                .font(.system(.callout, design: .rounded))
+                .bold()
+            + Text(" kcal")
+                .font(.system(.caption, design: .rounded))
+            
+            Text("\(Int(steps)) / \(Int(goals.stepsGoal))")
+                .font(.system(.callout, design: .rounded))
+                .bold()
             + Text(" steps")
-            .font(.system(.caption, design: .rounded))
+                .font(.system(.caption, design: .rounded))
             
-        Text("30/60")
-            .font(.system(.callout, design: .rounded))
-            .bold()
-            + Text(" minutes")
-            .font(.system(.caption, design: .rounded))
+            Text("\(Int(distance)) / \(Int(goals.distanceGoal))")
+                .font(.system(.callout, design: .rounded))
+                .bold()
+            + Text(" m")
+                .font(.system(.caption, design: .rounded))
+        }
+        .onAppear {
+            health.readActiveEnergyBurnedRecordsToday { samples in
+                calorieSamples = health.groupRecordsByHalfHour(
+                    samples,
+                    unit: .kilocalorie()
+                )
+            }
+            health.readStepsRecordsToday { samples in
+                stepSamples = health.groupRecordsByHalfHour(
+                    samples,
+                    unit: .count()
+                )
+            }
+            health.readDistanceWalkingRunningRecordsToday { samples in
+                distanceSamples = health.groupRecordsByHalfHour(
+                    samples,
+                    unit: .meter()
+                )
+            }
             
-        Text("2/3")
-            .font(.system(.callout, design: .rounded))
-            .bold()
-            + Text(" meals")
-            .font(.system(.caption, design: .rounded))
+            health.readStepsCountToday { steps in
+                self.steps = round(steps)
+            }
+            health.readActiveEnergyBurnedToday { calories in
+                self.calories = round(calories)
+            }
+            health.readDistanceWalkingRunningToday { distance in
+                self.distance = round(distance)
+            }
+        }
     }
 }
 
@@ -50,9 +89,9 @@ struct StackedActivityRingViewConfig {
 }
 
 struct StackedActivityRingView: View {
-    @Binding var outterRingValue: CGFloat
-    @Binding var middleRingValue: CGFloat
-    @Binding var innerRingValue: CGFloat
+    var outterRingValue: CGFloat
+    var middleRingValue: CGFloat
+    var innerRingValue: CGFloat
     
     var config: StackedActivityRingViewConfig = .init()
     var width: CGFloat = 80.0

@@ -8,40 +8,77 @@
 import SwiftUI
 
 struct MediumGoalsWidget: View {
-    @State private var outterRingValue: CGFloat = 0.5
-    @State private var middleRingValue: CGFloat = 0.7
-    @State private var innerRingValue: CGFloat = 0.9
+    @EnvironmentObject var health: HealthKitViewModel
+    @EnvironmentObject var goals: GoalsViewModel
+    
+    @State private var steps: Double = 0
+    @State private var calories: Double = 0
+    @State private var distance: Double = 0
+    
+    @State private var calorieSamples: [(date: Date, value: Double)] = []
+    @State private var stepSamples: [(date: Date, value: Double)] = []
+    @State private var distanceSamples: [(date: Date, value: Double)] = []
 
     var body: some View {
         HStack(spacing: 24) {
             StackedActivityRingView(
-                outterRingValue: $outterRingValue,
-                middleRingValue: $middleRingValue,
-                innerRingValue: $innerRingValue,
+                outterRingValue: calories / goals.activeEnergyGoal,
+                middleRingValue: steps / goals.stepsGoal,
+                innerRingValue: distance / goals.distanceGoal,
                 config: .init(lineWidth: 14)
             )
             .frame(width: 80, height: 80)
             VStack(alignment: .leading, spacing: 6) {
-                Text("7546/10000")
+                Text("\(Int(calories)) / \(Int(goals.activeEnergyGoal))")
+                    .font(.system(.title3, design: .rounded))
+                    .bold()
+                    + Text(" kcal")
+                    .font(.system(.callout, design: .rounded))
+
+                Text("\(Int(steps)) / \(Int(goals.stepsGoal))")
                     .font(.system(.title3, design: .rounded))
                     .bold()
                     + Text(" steps")
                     .font(.system(.callout, design: .rounded))
 
-                Text("30/60")
+                Text("\(Int(distance)) / \(Int(goals.distanceGoal))")
                     .font(.system(.title3, design: .rounded))
                     .bold()
-                    + Text(" minutes")
-                    .font(.system(.callout, design: .rounded))
-
-                Text("2/3")
-                    .font(.system(.title3, design: .rounded))
-                    .bold()
-                    + Text(" meals")
+                    + Text(" m")
                     .font(.system(.callout, design: .rounded))
             }
         }
         .padding(.horizontal)
         .padding(.vertical, 12)
+        .onAppear {
+            health.readActiveEnergyBurnedRecordsToday { samples in
+                calorieSamples = health.groupRecordsByHalfHour(
+                    samples,
+                    unit: .kilocalorie()
+                )
+            }
+            health.readStepsRecordsToday { samples in
+                stepSamples = health.groupRecordsByHalfHour(
+                    samples,
+                    unit: .count()
+                )
+            }
+            health.readDistanceWalkingRunningRecordsToday { samples in
+                distanceSamples = health.groupRecordsByHalfHour(
+                    samples,
+                    unit: .meter()
+                )
+            }
+            
+            health.readStepsCountToday { steps in
+                self.steps = round(steps)
+            }
+            health.readActiveEnergyBurnedToday { calories in
+                self.calories = round(calories)
+            }
+            health.readDistanceWalkingRunningToday { distance in
+                self.distance = round(distance)
+            }
+        }
     }
 }

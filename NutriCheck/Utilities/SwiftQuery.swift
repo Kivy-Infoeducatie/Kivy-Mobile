@@ -843,3 +843,76 @@ extension View {
         }
     }
 }
+
+struct MutationView<Input, Output, LoadingContent: View, SuccessContent: View>: View {
+    let mutation: Mutation<Input, Output>
+    let content: LoadingContent
+    let successContent: (Output) -> SuccessContent
+    
+    var body: some View {
+        Group {
+            switch mutation.state {
+            case .success(let value):
+                successContent(value)
+            case .error(let error):
+                ErrorView(error: error.localizedDescription) {
+                    // No invalidate for mutations
+                }
+            case .loading, .idle:
+                content
+            }
+        }
+    }
+}
+
+extension View {
+    func withMutation<Input, Output, LoadingContent: View, SuccessContent: View>(
+        _ mutation: Mutation<Input, Output>,
+        @ViewBuilder loading: () -> LoadingContent,
+        @ViewBuilder success: @escaping (Output) -> SuccessContent
+    ) -> some View {
+        MutationView(
+            mutation: mutation,
+            content: loading(),
+            successContent: success
+        )
+    }
+    
+    func withMutationProgress<Input, Output, SuccessContent: View>(
+        _ mutation: Mutation<Input, Output>,
+        @ViewBuilder success: @escaping (Output) -> SuccessContent
+    ) -> some View {
+        withMutation(mutation) {
+            ProgressView()
+        } success: { value in
+            success(value)
+        }
+    }
+    
+    // With toast error handling
+    func withMutationToast<Input, Output, LoadingContent: View, SuccessContent: View>(
+        _ mutation: Mutation<Input, Output>,
+        toast: @escaping (ToastValue) -> Void,
+        @ViewBuilder loading: () -> LoadingContent,
+        @ViewBuilder success: @escaping (Output) -> SuccessContent
+    ) -> some View {
+        Group {
+            switch mutation.state {
+            case .success(let value):
+                success(value)
+            case .error(let error):
+                loading()
+                    .onAppear {
+                        let toastValue = ToastValue(
+                            icon: Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.red),
+                            message: error.localizedDescription
+                        )
+                        toast(toastValue)
+                    }
+            case .loading, .idle:
+                loading()
+            }
+        }
+    }
+}

@@ -13,7 +13,7 @@ struct SuggestedRecipesWidget: View {
     var body: some View {
         switch widget.size {
         case .small:
-            SmallFeaturedRecipeWidget(widget: widget)
+            SmallSuggestedRecipeWidget(widget: widget)
         case .medium:
             WidgetWrapper(widget: widget) {
                 MediumSuggestedRecipesWidget()

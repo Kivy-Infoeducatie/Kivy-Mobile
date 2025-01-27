@@ -11,7 +11,7 @@ enum TabModel: CaseIterable {
     case home
     case ai
     case recipes
-    case health
+    case goals
     
     var title: String {
         switch self {
@@ -21,8 +21,8 @@ enum TabModel: CaseIterable {
             return "Cook AI"
         case .recipes:
             return "Recipes"
-        case .health:
-            return "Health"
+        case .goals:
+            return "Goals"
         }
     }
     
@@ -34,7 +34,7 @@ enum TabModel: CaseIterable {
             return "sparkles"
         case .recipes:
             return "book.fill"
-        case .health:
+        case .goals:
             return "heart.fill"
         }
     }

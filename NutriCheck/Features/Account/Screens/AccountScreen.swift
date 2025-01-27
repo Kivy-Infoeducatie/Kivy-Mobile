@@ -309,8 +309,6 @@ struct EditPreferencesScreen: View {
                                 allergens: Array(allergens)
                             )
                             
-                            print(try? String(data: JSONEncoder().encode(updatedPreferences), encoding: .utf8))
-                            
                             Task {
                                 updatePreferences
                                     .execute(

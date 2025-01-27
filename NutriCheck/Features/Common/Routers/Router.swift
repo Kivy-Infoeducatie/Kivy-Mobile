@@ -19,6 +19,8 @@ enum Router: URLRequestConvertible {
     case createRecipe(recipe: Recipe)
     case getRecipeRecommendations
     case getLikedRecipes
+    case getFeaturedRecipes
+    case getUserRecipes
     case getRecipe(id: Int)
     case updateRecipe(id: Int, recipe: Recipe)
     case deleteRecipe(id: Int)
@@ -39,9 +41,20 @@ enum Router: URLRequestConvertible {
     case followUser(id: Int)
     case unfollowUser(id: Int)
     
+    case createChat(message: String)
+    case sendMessage(chatID: Int, message: String)
+    case getAllChats
+    case getChat(id: Int)
+    case regenerateResponse(id: Int)
+    case renameChat(id: Int, name: String)
+    case editMessage(id: Int, message: String)
+    case deleteChat(id: Int)
+    case scanToCreateRecipe(image: String)
+    case scanToLogMeal(image: String)
+    case modifyRecipe(recipeID: Int, message: String)
     
     var baseURL: String {
-        return "http://192.168.1.239:3000"
+        return "http://172.20.10.2:3000"
     }
     
     var path: String {
@@ -62,6 +75,10 @@ enum Router: URLRequestConvertible {
             return "/recipe/recommend"
         case .getLikedRecipes:
             return "/recipe/liked"
+        case .getFeaturedRecipes:
+            return "/recipe/featured"
+        case .getUserRecipes:
+            return "/recipe"
         case .getRecipe(let id):
             return "/recipe/\(id)"
         case .updateRecipe(let id, _):
@@ -90,16 +107,41 @@ enum Router: URLRequestConvertible {
             return "/user/\(id)/follow"
         case .unfollowUser(let id):
             return "/user/\(id)/follow"
+        case .createChat:
+            return "/intelligence/chat"
+        case .sendMessage(let chatID, _):
+            return "/intelligence/chat/\(chatID)"
+        case .getAllChats:
+            return "/intelligence/chat"
+        case .getChat(let id):
+            return "/intelligence/chat/\(id)"
+        case .regenerateResponse(let id):
+            return "/intelligence/chat/regenerate/\(id)"
+        case .renameChat(let id, _):
+            return "/intelligence/chat/rename/\(id)"
+        case .editMessage(let id, _):
+            return "/intelligence/chat/edit/\(id)"
+        case .deleteChat(let id):
+            return "/intelligence/chat/\(id)"
+        case .scanToCreateRecipe:
+            return "/intelligence/scan-to-create"
+        case .scanToLogMeal:
+            return "/intelligence/scan-to-log"
+        case .modifyRecipe(let id, _):
+            return "/intelligence/modify-recipe/\(id)"
         }
     }
     
     var method: HTTPMethod {
         switch self {
-        case .login, .signUp, .createRecipe, .createPost, .likeRecipe, .likePost, .followUser:
+        case .login, .signUp, .createRecipe, .createPost, .likeRecipe, .likePost, .followUser,
+             .searchRecipes, .createChat, .sendMessage, .scanToCreateRecipe, .scanToLogMeal,
+             .modifyRecipe:
             return .post
-        case .updateAccount, .updateRecipe, .updatePost, .updatePreferences:
+        case .updateAccount, .updateRecipe, .updatePost, .updatePreferences,
+             .regenerateResponse, .editMessage, .renameChat:
             return .patch
-        case .deleteRecipe, .deletePost, .unlikeRecipe, .unlikePost, .unfollowUser:
+        case .deleteRecipe, .deletePost, .unlikeRecipe, .unlikePost, .unfollowUser, .deleteChat:
             return .delete
         default:
             return .get
@@ -126,6 +168,20 @@ enum Router: URLRequestConvertible {
             return post
         case .updatePreferences(let preferences):
             return preferences
+        case .createChat(let message):
+            return ["message": message]
+        case .sendMessage(_, let message):
+            return ["message": message]
+        case .editMessage(_, let message):
+            return ["message": message]
+        case .renameChat(_, let name):
+            return ["name": name]
+        case .scanToCreateRecipe(let image):
+            return ["image": image]
+        case .scanToLogMeal(let image):
+            return ["image": image]
+        case .modifyRecipe(_, let message):
+            return ["message": message]
         default:
             return nil
         }

@@ -86,6 +86,7 @@ struct OngoingRecipeScreen: View {
                         
                         VStack(alignment: .leading) {
                             Text("\(viewModel.currentStep ?? "")")
+                                .multilineTextAlignment(.leading)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding()
@@ -142,14 +143,14 @@ struct OngoingRecipeScreen: View {
                             }
                         }
                         
-                        Text("Ingredients")
-                            .font(.title3.bold())
-                            .padding(.top)
-                        
-                        VStack(alignment: .leading) {}
-                            .padding()
-                            .background(.thinMaterial)
-                            .clipShape(.rect(cornerRadius: 16))
+//                        Text("Ingredients")
+//                            .font(.title3.bold())
+//                            .padding(.top)
+//                        
+//                        VStack(alignment: .leading) {}
+//                            .padding()
+//                            .background(.thinMaterial)
+//                            .clipShape(.rect(cornerRadius: 16))
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding()

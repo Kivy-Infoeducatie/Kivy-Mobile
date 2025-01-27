@@ -26,7 +26,7 @@ struct RecipesScreen: View {
                     GeometryReader { geo in
                         withQueryError(recipes, loading: {
                             RecipesHeroPlaceHolder(namespace: namespace, geo: geo, showTikTok: $showTikTok)
-                        }, success: { recipes in
+                        }, success: { _ in
                             ForEach(
                                 Array(recommendationsViewModel.recommendations.reversed().enumerated()),
                                 id: \.offset
@@ -75,9 +75,9 @@ struct RecipesScreen: View {
                 if !showTikTok {
                     GeometryReader { geo in
                         ScrollView {
-                            withQueryError(recipes, loading: {
+                            withQuery(recipes, loading: {
                                 RecipesHeroPlaceHolder(namespace: namespace, geo: geo, showTikTok: $showTikTok)
-                            }, success: { recipes in
+                            }, success: { _ in
                                 let upperBound = min(
                                     recommendationsViewModel.currentRecommendationIndex + 3,
                                     recommendationsViewModel.recommendations.count
@@ -128,6 +128,8 @@ struct RecipesScreen: View {
                                     .padding(.top)
                                 }
                                 .padding(.top, 60)
+                            }, error: { _ in
+                                RecipesHeroPlaceHolder(namespace: namespace, geo: geo, showTikTok: $showTikTok)
                             })
                             VStack(alignment: .leading) {
                                 Text("Shopping List")
@@ -167,7 +169,7 @@ struct RecipesScreen: View {
                         recipes,
                         loading: {
                             ProgressView()
-                        }, success: { recipes in
+                        }, success: { _ in
                             RecipesTikTokScreen(
                                 backAction: {
                                     showTikTok.toggle()
@@ -206,13 +208,13 @@ struct ShoppingListPreview: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("\(shoppingListItems.count) items")
                 .font(.title3.bold())
-            
+
             if !shoppingListItems.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(Array(shoppingListItems.prefix(5))) { item in
                         ShoppingListItemRow(item: item)
                     }
-                    
+
                     if shoppingListItems.count > 5 {
                         Text("and \(shoppingListItems.count - 5) more items")
                             .foregroundColor(.secondary)
@@ -234,12 +236,12 @@ struct ShoppingListPreview: View {
 struct SmallRecipeCard: View {
     let recipe: Recipe
     let isExpanded: Bool
-    
+
     init(recipe: Recipe, isExpanded: Bool = false) {
         self.recipe = recipe
         self.isExpanded = isExpanded
     }
-    
+
     @Namespace private var namespace
     @State private var showRecipe = false
 
@@ -252,6 +254,7 @@ struct SmallRecipeCard: View {
                     switch result {
                     case .empty:
                         Image(systemName: "photo")
+                            .frame(width: 80, height: 100)
                     case .success(let image):
                         image
                             .resizable()
@@ -260,8 +263,10 @@ struct SmallRecipeCard: View {
                             .clipped()
                     case .failure:
                         Image(systemName: "photo")
+                            .frame(width: 80, height: 100)
                     default:
                         Image(systemName: "photo")
+                            .frame(width: 80, height: 100)
                     }
                 }
 
@@ -359,7 +364,7 @@ struct RecipesHeroPlaceHolder: View {
 
 struct SuggestedRecipesCarousel: View {
     @StateObject private var recipes = RecipeQueries.getRecipeRecommendations()
-    
+
     var body: some View {
         NavigationLinkSectionHeader(
             title: "Suggestions for you",
@@ -381,7 +386,7 @@ struct SuggestedRecipesCarousel: View {
 
 struct SuggestedRecipesExpandedScreen: View {
     @StateObject private var recipes = RecipeQueries.getRecipeRecommendations()
-    
+
     var body: some View {
         NavigationStack {
             withQueryProgress(recipes) { recipes in
@@ -404,7 +409,7 @@ struct SuggestedRecipesExpandedScreen: View {
 
 struct SavedRecipesCarousel: View {
     @EnvironmentObject private var savedRecipes: SavedRecipesViewModel
-    
+
     var body: some View {
         NavigationLinkSectionHeader(
             title: "Saved recipes",
@@ -424,7 +429,7 @@ struct SavedRecipesCarousel: View {
 
 struct SavedRecipesExpandedScreen: View {
     @EnvironmentObject private var savedRecipes: SavedRecipesViewModel
-    
+
     var body: some View {
         NavigationStack {
             ScrollView {

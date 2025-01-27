@@ -105,4 +105,11 @@ enum WidgetType: String, WidgetTypeProtocol, CaseIterable, Identifiable, Codable
         case .reminder: return [.medium]
         }
     }
+    
+    var hidden: Bool {
+        switch self {
+        case .reminder, .ongoingRecipe: return true
+        default: return false
+        }
+    }
 }

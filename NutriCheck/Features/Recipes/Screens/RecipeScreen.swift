@@ -37,16 +37,16 @@ struct RecipeScreen: View {
         NavigationStack {
             GeometryReader { geo in
                 ScrollView {
-                    switch detailedRecipe.state {
-                    case .idle:
-                        Text("Idle")
-                    case .loading:
-                        Text("Loading")
-                    case .success(let t):
-                        Text("Success")
-                    case .error(let error):
-                        Text("Error \(error.localizedDescription)")
-                    }
+//                    switch detailedRecipe.state {
+//                    case .idle:
+//                        Text("Idle")
+//                    case .loading:
+//                        Text("Loading")
+//                    case .success(let t):
+//                        Text("Success")
+//                    case .error(let error):
+//                        Text("Error \(error.localizedDescription)")
+//                    }
                     VStack(spacing: 12) {
                         ZStack(alignment: .bottomLeading) {
                             CachedAsyncImage(url: URL(string: recipe.images.first ?? "")) { result in
@@ -172,7 +172,7 @@ struct RecipeScreen: View {
                             
                             StatCard(
                                 name: "Ingredients",
-                                value: "\(recipe.ingredientsCount ?? 0)"
+                                value: "\((recipe.ingredients ?? []).count)"
                             )
                         }
                         
@@ -263,12 +263,12 @@ struct RecipeScreen: View {
                         VStack(alignment: .leading) {
                             NavigationLinkSectionHeader(
                                 title: "Comments",
-                                destination: CommentsScreen(comments: recipe.comments ?? [])
+                                destination: CommentsScreen(comments: recipe.posts ?? [])
                             )
                             .padding(.bottom, 4)
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack {
-                                    ForEach(recipe.comments ?? []) { comment in
+                                    ForEach(recipe.posts ?? []) { comment in
                                         CommentCard(comment: comment)
                                             .frame(
                                                 width: 250,
@@ -540,7 +540,7 @@ struct CommentCard: View {
                 Text(comment.authorUsername)
                     .font(.callout.bold())
                 Spacer()
-                Text("\(comment.createdAt.formattedRelative())")
+                Text("\(comment.createdAt)")
                     .font(.caption)
             }
             Text(comment.content)

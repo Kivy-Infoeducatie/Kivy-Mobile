@@ -53,6 +53,11 @@ enum Router: URLRequestConvertible {
     case scanToLogMeal(image: String)
     case modifyRecipe(recipeID: Int, message: String)
     
+    case getTargetCalories
+    case getLogs
+    case logCalories(calories: Double)
+    case logRecipe(recipeID: Int)
+    
     var baseURL: String {
         return "http://172.20.10.2:3000"
     }
@@ -129,6 +134,14 @@ enum Router: URLRequestConvertible {
             return "/intelligence/scan-to-log"
         case .modifyRecipe(let id, _):
             return "/intelligence/modify-recipe/\(id)"
+        case .getTargetCalories:
+            return "/dietary-plan/target"
+        case .getLogs:
+            return "/dietary-plan/log"
+        case .logCalories:
+            return "/dietary-plan/log"
+        case .logRecipe(let id):
+            return "/dietary-plan/log/recipe/\(id)"
         }
     }
     
@@ -136,7 +149,7 @@ enum Router: URLRequestConvertible {
         switch self {
         case .login, .signUp, .createRecipe, .createPost, .likeRecipe, .likePost, .followUser,
              .searchRecipes, .createChat, .sendMessage, .scanToCreateRecipe, .scanToLogMeal,
-             .modifyRecipe:
+             .modifyRecipe, .logCalories, .logRecipe:
             return .post
         case .updateAccount, .updateRecipe, .updatePost, .updatePreferences,
              .regenerateResponse, .editMessage, .renameChat:
@@ -182,6 +195,8 @@ enum Router: URLRequestConvertible {
             return ["image": image]
         case .modifyRecipe(_, let message):
             return ["message": message]
+        case .logCalories(let calories):
+            return ["calories": calories]
         default:
             return nil
         }

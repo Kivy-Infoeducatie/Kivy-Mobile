@@ -8,7 +8,7 @@
 import Foundation
 
 struct CreatePostDTO: Codable {
-    let rating: Int
-    let recipeID: Int
-    let content: String
+    var rating: Int
+    var recipeID: Int
+    var content: String
 }

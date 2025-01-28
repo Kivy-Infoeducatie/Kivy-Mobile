@@ -9,6 +9,8 @@ import CachedAsyncImage
 import SwiftUI
 
 struct RecipeScreen: View {
+    @Environment(\.presentToast) var presentToast
+    
     @State private var recipe: Recipe
     
     @State private var lineLimit: Int = 2
@@ -23,6 +25,7 @@ struct RecipeScreen: View {
     @Environment(\.dismiss) var dismiss
     
     @StateObject private var detailedRecipe: Query<Recipe>
+    @StateObject private var log = GoalsQueries.logRecipe()
     
     private var recipeStarted: Bool {
         ongoingRecipe.recipe != nil && ongoingRecipe.recipe?.id == recipe.id
@@ -200,7 +203,7 @@ struct RecipeScreen: View {
                                     .frame(maxWidth: .infinity)
                                     
 //                                    Divider()
-//                                    
+//
 //                                    Button {
 //                                        servings += 1
 //                                    } label: {
@@ -215,6 +218,24 @@ struct RecipeScreen: View {
 //                                .frame(width: 130)
                                 .padding(.vertical)
                                 .background(.thinMaterial)
+                                .clipShape(Capsule())
+                            }
+                            
+                            Button {
+                                log.execute(recipe.id, presenting: presentToast,
+                                            successMessage: "Calories logged")
+                            } label: {
+                                HStack {
+                                    Image(
+                                        systemName: "plus"
+                                    )
+                                    Text("Log recipe")
+                                        .font(.callout.bold())
+                                }
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                                .background(Color.blue.opacity(0.2))
+                                .foregroundStyle(.blue)
                                 .clipShape(Capsule())
                             }
                             
@@ -263,7 +284,7 @@ struct RecipeScreen: View {
                         VStack(alignment: .leading) {
                             NavigationLinkSectionHeader(
                                 title: "Comments",
-                                destination: CommentsScreen(comments: recipe.posts ?? [])
+                                destination: CommentsScreen(recipeID: recipe.id, comments: recipe.posts ?? [])
                             )
                             .padding(.bottom, 4)
                             ScrollView(.horizontal, showsIndicators: false) {
@@ -553,7 +574,9 @@ struct CommentCard: View {
 }
 
 struct CommentsScreen: View {
+    let recipeID: Int
     let comments: [Comment]
+    @State private var showCreateComment = false
     
     var body: some View {
         NavigationStack {
@@ -566,6 +589,72 @@ struct CommentsScreen: View {
             .padding(.horizontal)
             .navigationTitle("Comments")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showCreateComment.toggle()
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
+            .sheet(isPresented: $showCreateComment) {
+                CreateCommentScreen(recipeID: recipeID)
+            }
+        }
+    }
+}
+
+struct CreateCommentScreen: View {
+    @Environment(\.dismiss) var dismiss
+    @Environment(\.presentToast) var presentToast
+    
+    let recipeID: Int
+    
+    @StateObject private var createComment = PostsMutations.createPost()
+    @State private var comment: CreatePostDTO = .init(
+        rating: 5,
+        recipeID: 0,
+        content: ""
+    )
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Comment", text: $comment.content)
+                }
+            }
+            .navigationTitle("Create Comment")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        createComment
+                            .execute(
+                                comment,
+                                presenting: presentToast,
+                                successMessage: "Comment posted",
+                                errorTransform: { _ in "Failed to post comment" },
+                                onSuccess: { _ in
+                                    dismiss()
+                                }
+                            )
+                    } label: {
+                        Text("Post")
+                    }
+                }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Text("Cancel")
+                    }
+                }
+            }
+        }
+        .onAppear {
+            comment.recipeID = recipeID
         }
     }
 }

@@ -16,7 +16,7 @@ struct RootScreen: View {
         if auth.isAuthenticated {
             TabView(selection: $selectedTab) {
                 Tab(value: .home) {
-                    NavigationWrapper(title: "Good morning, Alex") {
+                    NavigationWrapper(title: "Home") {
                         HomeScreen()
                     }
                     .toolbarVisibility(.hidden, for: .tabBar)

@@ -143,12 +143,14 @@ struct ChatMessage: Identifiable, Equatable {
     let text: String
     let isUser: Bool
     let timestamp: Date
+    let recipe: Recipe?
     var isAnimated: Bool = false
     
-    init(text: String, isUser: Bool, timestamp: Date = Date()) {
+    init(text: String, isUser: Bool, timestamp: Date = Date(), recipe: Recipe? = nil) {
         self.text = text
         self.isUser = isUser
         self.timestamp = timestamp
+        self.recipe = recipe
     }
 }
 
@@ -160,17 +162,37 @@ struct MessageBubble: View {
         HStack {
             if message.isUser { Spacer() }
             
-            Text(message.text)
-                .padding()
-                .background(message.isUser ? Color.gray.opacity(0.3) : Color.white.opacity(0.3))
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .opacity(isVisible ? 1 : 0)
-                .offset(y: isVisible ? 0 : 20)
-                .onAppear {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        isVisible = true
+            VStack(alignment: message.isUser ? .trailing : .leading) {
+                Text(message.text)
+                if let recipe = message.recipe {
+                    VStack(alignment: .leading) {
+                        Text(recipe.name)
+                            .font(.title3.bold())
+                        Text(recipe.description)
+                            .font(.caption)
+                        HStack {
+                            Text("\(recipe.ingredients?.count ?? 0) ingredients")
+                                .font(.caption)
+                            Divider()
+                            Text("\(recipe.cookingTime ?? 0) minutes")
+                                .font(.caption)
+                        }
                     }
+                    .padding()
+                    .background(Color.white.opacity(0.3))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
                 }
+            }
+            .padding()
+            .background(message.isUser ? Color.gray.opacity(0.3) : Color.white.opacity(0.3))
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .opacity(isVisible ? 1 : 0)
+            .offset(y: isVisible ? 0 : 20)
+            .onAppear {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    isVisible = true
+                }
+            }
             
             if !message.isUser { Spacer() }
         }
@@ -288,22 +310,199 @@ struct AIScreen: View {
     @State private var isChatActive = false
     @State private var messages: [ChatMessage] = []
     @State private var searchText = ""
-    @State private var isTyping = false
+    @State private var currentChatID: Int?
     
     @Environment(\.colorScheme) var colorScheme
-    
     @StateObject private var keyboardManager = KeyboardManager()
     
-    func simulateResponse(to message: String) {
-        isTyping = true
-        
-        // Simulate AI thinking time
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            isTyping = false
-            withAnimation {
-                messages.append(ChatMessage(text: "This is a sample response to: \(message)", isUser: false))
+    // Queries and Mutations
+    @StateObject private var chatsQuery = AIQueries.getChats()
+    @StateObject private var chatMutation = AIQueries.getChatMutation()
+    @StateObject private var createChatMutation = AIQueries.createChat()
+    @StateObject private var sendMessageMutation = AIQueries.sendMessage()
+    
+    private func handleNewMessage(_ text: String) {
+        if let chatID = currentChatID {
+            // Send message in existing chat
+            messages.append(ChatMessage(text: text, isUser: true))
+            sendMessageMutation.execute((chatID: chatID, message: text)) { response in
+                print("send message response: \(response)")
+                withAnimation {
+                    if let responseText = getResponseText(from: response.message) {
+                        messages.append(ChatMessage(text: responseText, isUser: false))
+                    }
+                }
+            }
+        } else {
+            // Create new chat
+            messages.append(ChatMessage(text: text, isUser: true))
+            createChatMutation.execute(text) { response in
+                print("create chat response: \(response)")
+                currentChatID = response.chatID
+                withAnimation {
+                    if let responseText = getResponseText(from: response.message) {
+                        messages.append(ChatMessage(text: responseText, isUser: false))
+                    }
+                }
             }
         }
+    }
+    
+    private func getResponseText(from response: Response) -> String? {
+        switch response.response {
+        case let responseText:
+            return responseText
+        }
+    }
+    
+    private func getMessageText(from message: Message) -> String {
+        if case let .string(text) = message.parts.first?.text {
+            return text
+        }
+        if case let .response(response) = message.parts.first?.text {
+            return response.response
+        }
+        return ""
+    }
+    
+    private func getMessageRecipe(from message: Message) -> Recipe? {
+        if case let .string(text) = message.parts.first?.text {
+            return nil
+        }
+        if case let .response(response) = message.parts.first?.text {
+            return response.recipe
+        }
+        return nil
+    }
+    
+    var chatView: some View {
+        VStack(spacing: 0) {
+            ScrollViewReader { _ in
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        ForEach(messages) { message in
+                            MessageBubble(message: message)
+                                .id(message.id)
+                        }
+                        
+                        if createChatMutation.state.isLoading || sendMessageMutation.state.isLoading {
+                            TypingIndicator()
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .id("typing")
+                        }
+                    }
+                    .padding()
+                    .padding(.top, 50)
+                }
+                .onChange(of: messages) { _ in
+                    withAnimation {
+//                        proxy.scrollTo(messages.last?.id ?? "typing", anchor: .bottom)
+                    }
+                }
+            }
+            
+            HStack(spacing: 12) {
+                Button(action: {
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                        isChatActive = false
+                        messages = []
+                        currentChatID = nil
+                    }
+                }) {
+                    Image(systemName: "chevron.left")
+                        .padding(12)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Circle())
+                        .overlay(
+                            Circle()
+                                .stroke(.white.opacity(0.2), lineWidth: 1)
+                        )
+                }
+                
+                AISearchBar(searchText: $searchText) { text in
+                    handleNewMessage(text)
+                }
+            }
+            .padding(.vertical, 16)
+            .padding(.horizontal)
+            .padding(.bottom, keyboardManager.isKeyboardVisible ? 0 : 60)
+        }
+        .transition(.opacity)
+    }
+    
+    var suggestionsList: some View {
+        VStack(spacing: 0) {
+            AISearchBar(searchText: $searchText) { text in
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                    isChatActive = true
+                    handleNewMessage(text)
+                }
+            }
+            .padding(.vertical, 16)
+            .padding(.horizontal)
+            
+            ScrollView {
+                LazyVStack(spacing: 12) {
+                    ForEach(Array(suggestions.enumerated()), id: \.element.id) { index, item in
+                        SuggestionCard(
+                            item: item,
+                            delay: Double(index) * 0.1,
+                            appeared: $suggestionsAppeared
+                        )
+                    }
+                }
+                .padding(.horizontal)
+                
+                withQueryProgress(chatsQuery) { chats in
+                    LazyVStack(alignment: .leading) {
+                        Text("Recent Chats")
+                            .font(.title3.bold())
+                            .padding(.horizontal)
+                        
+                        ForEach(chats) { chat in
+                            Button {
+                                chatMutation.execute(chat.id) { chat in
+                                    
+                                    withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                                        isChatActive = true
+                                        currentChatID = chat.id
+                                        messages = (chat.messages ?? []).map { message in
+                                            ChatMessage(
+                                                text: getMessageText(from: message),
+                                                isUser: message.role == .user,
+                                                timestamp: message.createdAt,
+                                                recipe: getMessageRecipe(from: message)
+                                            )
+                                        }
+                                    }
+                                } onError: { error in
+                                    print("error: \(error)")
+                                }
+                            } label: {
+                                HStack {
+                                    Text(chat.name)
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                }
+                                .padding()
+                                .background(.ultraThinMaterial)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                            }
+                            .padding(.horizontal)
+                        }
+                    }
+                    .padding(.vertical)
+                    .padding(.bottom, 100)
+                }
+            }
+            .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+        }
+        .padding(.top, 50)
+        .transition(.asymmetric(
+            insertion: .opacity,
+            removal: .opacity
+        ))
     }
     
     var body: some View {
@@ -311,7 +510,7 @@ struct AIScreen: View {
             let localOrigin = origin
             
             ZStack(alignment: .top) {
-                // Background stays the same
+                // Background
                 VStack(spacing: 0) {
                     if colorScheme == .dark {
                         DarkMeshGradientView()
@@ -331,9 +530,8 @@ struct AIScreen: View {
                     initialValue: 0,
                     trigger: counter
                 ) { view, elapsedTime in
-                    
                     view.visualEffect { view, _ in
-                        return view.layerEffect(
+                        view.layerEffect(
                             ShaderLibrary.Ripple(
                                 .float2(localOrigin),
                                 .float(elapsedTime),
@@ -350,107 +548,12 @@ struct AIScreen: View {
                     MoveKeyframe(0)
                     LinearKeyframe(3, duration: 3)
                 }
-                    
+                
+                // Content
                 if isChatActive {
-                    // Chat Layout
-                    VStack(spacing: 0) {
-                        ScrollViewReader { _ in
-                            ScrollView {
-                                LazyVStack(spacing: 12) {
-                                    ForEach(messages) { message in
-                                        MessageBubble(message: message)
-                                            .id(message.id)
-                                    }
-                                        
-                                    if isTyping {
-                                        TypingIndicator()
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                            .id("typing")
-                                    }
-                                }
-                                .padding()
-                                .padding(.top, 50)
-                            }
-                            .scrollDismissesKeyboard(.interactively)
-                            .onChange(of: messages) {
-                                withAnimation {
-                                    //                                        proxy.scrollTo(messages.last?.id ?? "typing", anchor: .bottom)
-                                }
-                            }
-                        }
-                            
-                        HStack(spacing: 12) {
-                            // Back button
-                            Button(action: {
-                                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                                    isChatActive = false
-                                    messages = []
-                                    isTyping = false
-                                }
-                            }) {
-                                Image(systemName: "chevron.left")
-                                    .padding(12)
-                                    .background(.ultraThinMaterial)
-                                    .clipShape(Circle())
-                                    .overlay(
-                                        Circle()
-                                            .stroke(.white.opacity(0.2), lineWidth: 1)
-                                    )
-                            }
-                                
-                            // Search bar
-                            AISearchBar(searchText: $searchText) { text in
-                                messages.append(ChatMessage(text: text, isUser: true))
-                                simulateResponse(to: text)
-                            }
-                        }
-                        .padding(.vertical, 16)
-                        .padding(.horizontal)
-                        .padding(.bottom, keyboardManager.isKeyboardVisible ? 0 : 60)
-                    }
-                    .transition(.opacity)
-                }
-                    
-                // Initial Layout with suggestions
-                if !isChatActive {
-                    VStack(spacing: 0) {
-                        // Fixed search bar at top
-                        AISearchBar(searchText: $searchText) { text in
-                            withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                                isChatActive = true
-                                messages.append(ChatMessage(text: text, isUser: true))
-                                simulateResponse(to: text)
-                            }
-                        }
-                        .padding(.vertical, 16)
-                        .padding(.horizontal)
-                            
-                        // Scrollable suggestions
-                        ScrollView {
-                            LazyVStack(spacing: 12) {
-                                ForEach(Array(suggestions.enumerated()), id: \.element.id) { index, item in
-                                    SuggestionCard(
-                                        item: item,
-                                        delay: Double(index) * 0.1,
-                                        appeared: $suggestionsAppeared
-                                    )
-                                }
-                            }
-                            .padding(.horizontal)
-                            LazyVStack(alignment: .leading) {
-                                Text("Chats")
-                                    .font(.title3.bold())
-                            }
-                            .padding()
-                        }
-                        .scrollIndicators(.hidden)
-                        .scrollDismissesKeyboard(.interactively)
-                    }
-                    .padding(.top, 50)
-                    .transition(.asymmetric(
-                        insertion: .opacity,
-                        removal: .opacity
-                    ))
+                    chatView
+                } else {
+                    suggestionsList
                 }
             }
             .task {

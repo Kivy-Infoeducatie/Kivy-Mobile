@@ -21,6 +21,8 @@ struct GoalsScreen: View {
     @State private var calorieSamples: [(date: Date, value: Double)] = []
     @State private var stepSamples: [(date: Date, value: Double)] = []
     @State private var distanceSamples: [(date: Date, value: Double)] = []
+    
+    @StateObject private var targetCalories = GoalsQueries.getTargetCalories()
 
     var body: some View {
         NavigationStack {
@@ -36,54 +38,56 @@ struct GoalsScreen: View {
                     VStack(alignment: .leading) {
                         Text("Daily Calorie Goal")
                             .font(.title3.bold())
-                        SectionWrapper(title: "Daily Calories", icon: "carrot.fill") {
-                            VStack(spacing: 20) {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text("520")
-                                        .font(.title2.bold())
-                                        +
-                                        Text(" out of 2200kcal")
-                                        .font(.body)
-                                        .fontWeight(.medium)
+                        withQueryProgress(targetCalories) { calories in
+                            SectionWrapper(title: "Daily Calories", icon: "carrot.fill") {
+                                VStack(spacing: 20) {
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        Text("\(Int(calories.consumed))")
+                                            .font(.title2.bold())
+                                            +
+                                        Text(" out of \(Int(calories.target + self.calories))kcal")
+                                            .font(.body)
+                                            .fontWeight(.medium)
 
-                                    Gauge(value: 0.4) {}
-                                }
+                                        Gauge(value: 0.4) {}
+                                    }
                                     
-                                HStack {
-                                    VStack(alignment: .leading) {
-                                        Text("2200kcal")
-                                            .font(.headline)
-                                        Text("base goal")
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    Spacer()
-                                    Divider()
-                                        .overlay(Color.accentColor.opacity(0.3))
-                                    Spacer()
-                                    VStack(alignment: .leading) {
-                                        Text("1000kcal")
-                                            .font(.headline)
-                                        Text("consumed")
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    Spacer()
-                                    Divider()
-                                        .overlay(Color.accentColor.opacity(0.3))
-                                    Spacer()
-                                    VStack(alignment: .leading) {
-                                        Text("250kcal")
-                                            .font(.headline)
-                                        Text("active energy")
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
+                                    HStack {
+                                        VStack(alignment: .leading) {
+                                            Text("\(Int(calories.target))kcal")
+                                                .font(.headline)
+                                            Text("base goal")
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        Spacer()
+                                        Divider()
+                                            .overlay(Color.accentColor.opacity(0.3))
+                                        Spacer()
+                                        VStack(alignment: .leading) {
+                                            Text("\(Int(calories.consumed))kcal")
+                                                .font(.headline)
+                                            Text("consumed")
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        Spacer()
+                                        Divider()
+                                            .overlay(Color.accentColor.opacity(0.3))
+                                        Spacer()
+                                        VStack(alignment: .leading) {
+                                            Text("\(Int(self.calories))kcal")
+                                                .font(.headline)
+                                            Text("active energy")
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
+                                        }
                                     }
                                 }
+                                .padding(.top, 2)
                             }
-                            .padding(.top, 2)
                         }
-                        
+
                         Text("Your Goals")
                             .font(.title3.bold())
                             .padding(.top)

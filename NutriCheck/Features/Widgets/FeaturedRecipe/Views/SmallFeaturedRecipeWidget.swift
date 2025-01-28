@@ -5,8 +5,8 @@
 //  Created by Alexandru Simedrea on 18.12.2024.
 //
 
-import SwiftUI
 import CachedAsyncImage
+import SwiftUI
 
 struct SmallFeaturedRecipeWidget: View {
     let widget: Widget
@@ -17,45 +17,65 @@ struct SmallFeaturedRecipeWidget: View {
         self.height = height
     }
 
-    var body: some View {
-        ZStack(alignment: .bottomLeading) {
-            CachedAsyncImage(
-                url: URL(
-                    string: "https://retete-thermomix.ro/wp-content/uploads/2021/12/Sarmale.webp"
-                )
-            ) { result in
-                switch result {
-                case .empty:
-                    Image(systemName: "photo")
-                case .success(let image):
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(height: height)
-                case .failure:
-                    Image(systemName: "photo")
-                default:
-                    Image(systemName: "photo")
-                }
-            }
+    @StateObject private var recipes = RecipeQueries.getFeaturedRecipes()
+    @Namespace var namespace
+    @State private var showRecipeDetails = false
 
-            VariableBlurView(direction: .blurredBottomClearTop)
-                .frame(height: 80)
-            VStack(alignment: .leading) {
-                HStack(spacing: 4) {
-                    Image(systemName: widget.type.icon)
-                    Text(widget.type.title)
-                        .font(.system(size: 14, weight: .semibold))
+    var body: some View {
+        withQueryProgress(recipes) { recipes in
+            let recipe = recipes.first ?? Recipe.EmptyRecipe
+
+            Button(action: { showRecipeDetails.toggle() }) {
+                ZStack(alignment: .bottomLeading) {
+                    VariableBlurView(direction: .blurredBottomClearTop)
+                        .frame(height: 80)
+                    VStack(alignment: .leading) {
+                        HStack(spacing: 4) {
+                            Image(systemName: widget.type.icon)
+                            Text(widget.type.title)
+                                .font(.system(size: 13, weight: .semibold))
+                        }
+                        .opacity(0.9)
+                        Text(recipe.name)
+                            .font(.callout.bold())
+                            .lineLimit(1)
+                        Text("by \(recipe.authorUsername)")
+                            .font(.caption.bold())
+                            .lineLimit(1)
+                    }
+                    .foregroundStyle(.white)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .opacity(0.9)
-                Text("Sarmale de post")
-                    .font(.callout.bold())
-                Text("by Jamila Cuisine")
-                    .font(.caption.bold())
+                .frame(maxHeight: .infinity, alignment: .bottomLeading)
+                .background {
+                    CachedAsyncImage(
+                        url: URL(
+                            string: recipe.images.first ?? ""
+                        )
+                    ) { result in
+                        switch result {
+                        case .empty:
+                            Image(systemName: "photo")
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        case .failure:
+                            Image(systemName: "photo")
+                        default:
+                            Image(systemName: "photo")
+                        }
+                    }
+                }
             }
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
+            .frame(maxHeight: .infinity)
+            .frame(height: height)
+            .matchedTransitionSource(id: "recipe\(recipe.id)", in: namespace)
+            .fullScreenCover(isPresented: $showRecipeDetails) {
+                RecipeScreen(recipe: recipe)
+                    .navigationTransition(.zoom(sourceID: "recipe\(recipe.id)", in: namespace))
+            }
         }
     }
 }

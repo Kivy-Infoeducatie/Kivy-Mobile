@@ -417,6 +417,10 @@ class PaginatedQuery<T>: ObservableObject {
 
 // MARK: - Mutation
 
+struct ceva: Decodable {
+    
+}
+
 @MainActor
 class Mutation<Input, Output>: ObservableObject {
     @Published private(set) var state: LoadingState<Output> = .idle
@@ -425,6 +429,7 @@ class Mutation<Input, Output>: ObservableObject {
     private let mutationFn: (Input) async throws -> Output
     private let invalidateKeys: [QueryKey]
     private var currentTask: Task<Void, Never>?
+    private var invalidateKeysFromInput: ((Input) -> [QueryKey])?
     
     private var onSuccess: ((Output) -> Void)?
     private var onError: ((Error) -> Void)?
@@ -432,12 +437,14 @@ class Mutation<Input, Output>: ObservableObject {
     init(
         queryClient: QueryClient = .shared,
         invalidateKeys: [QueryKey] = [],
+        invalidateKeysFromInput: ((Input) -> [QueryKey])? = nil,
         mutationFn: @escaping (Input) async throws -> Output,
         onSuccess: ((Output) -> Void)? = nil,
         onError: ((Error) -> Void)? = nil
     ) {
         self.queryClient = queryClient
         self.invalidateKeys = invalidateKeys
+        self.invalidateKeysFromInput = invalidateKeysFromInput
         self.mutationFn = mutationFn
         self.onSuccess = onSuccess
         self.onError = onError
@@ -481,6 +488,10 @@ class Mutation<Input, Output>: ObservableObject {
                 for key in self.invalidateKeys {
                     await self.queryClient.invalidateQueries(matching: key)
                 }
+                
+                for key in self.invalidateKeysFromInput?(input) ?? [] {
+                    await self.queryClient.invalidateQueries(matching: key)
+                }
             } catch is CancellationError {
                 let error = QueryError.operationCancelled
                 self.state = .error(error)
@@ -516,6 +527,10 @@ class Mutation<Input, Output>: ObservableObject {
                 onSuccess?(result)
                 
                 for key in self.invalidateKeys {
+                    await self.queryClient.invalidateQueries(matching: key)
+                }
+                
+                for key in self.invalidateKeysFromInput?(input) ?? [] {
                     await self.queryClient.invalidateQueries(matching: key)
                 }
             } catch is CancellationError {

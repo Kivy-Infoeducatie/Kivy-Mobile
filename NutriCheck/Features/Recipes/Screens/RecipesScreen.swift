@@ -144,6 +144,7 @@ struct RecipesScreen: View {
                                 }
                                 .matchedTransitionSource(id: "shopping_list", in: namespace)
 
+                                FeaturedRecipeView()
                                 SavedRecipesCarousel()
                                 SuggestedRecipesCarousel()
                             }
@@ -445,5 +446,21 @@ struct SavedRecipesExpandedScreen: View {
             .safeAreaPadding(.bottom, 60)
         }
         .navigationTitle("Saved recipes")
+    }
+}
+
+struct FeaturedRecipeView: View {
+    @StateObject private var recipes = RecipeQueries.getFeaturedRecipes()
+
+    var body: some View {
+        VStack(alignment: .leading) {
+            Text("Featured Recipe")
+                .font(.title3.bold())
+            withQueryProgress(recipes) { recipes in
+                let recipe = recipes.first ?? Recipe.EmptyRecipe
+                SmallRecipeCard(recipe: recipe, isExpanded: true)
+            }
+        }
+        .padding(.top)
     }
 }

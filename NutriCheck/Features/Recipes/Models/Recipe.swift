@@ -23,7 +23,6 @@ struct Recipe: Codable, Identifiable, Equatable {
     var difficulty: Difficulty
     var author: Author?
     
-    // Optional properties that aren't in the JSON should be declared without default values
     var createdAt: String?
     var preparationTime: Int?
     var steps: [String]?
@@ -84,7 +83,7 @@ struct Comment: Codable, Identifiable, Equatable {
     var content: String
     var rating: Int?
     var likesCount: Int?
-    var source: String
+    var source: String?
     var authorName: String?
     var createdAt: String
 }

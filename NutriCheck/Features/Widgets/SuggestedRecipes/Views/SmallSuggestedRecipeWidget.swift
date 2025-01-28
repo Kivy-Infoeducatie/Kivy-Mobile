@@ -27,26 +27,6 @@ struct SmallSuggestedRecipeWidget: View {
             
             Button(action: { showRecipeDetails.toggle() }) {
                 ZStack(alignment: .bottomLeading) {
-                    CachedAsyncImage(
-                        url: URL(
-                            string: recipe.images.first ?? ""
-                        )
-                    ) { result in
-                        switch result {
-                        case .empty:
-                            Image(systemName: "photo")
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(height: height)
-                        case .failure:
-                            Image(systemName: "photo")
-                        default:
-                            Image(systemName: "photo")
-                        }
-                    }
-                    
                     VariableBlurView(direction: .blurredBottomClearTop)
                         .frame(height: 80)
                     VStack(alignment: .leading) {
@@ -64,10 +44,32 @@ struct SmallSuggestedRecipeWidget: View {
                             .lineLimit(1)
                     }
                     .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxHeight: .infinity, alignment: .bottomLeading)
+                .background {
+                    CachedAsyncImage(
+                        url: URL(
+                            string: recipe.images.first ?? ""
+                        )
+                    ) { result in
+                        switch result {
+                        case .empty:
+                            Image(systemName: "photo")
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        case .failure:
+                            Image(systemName: "photo")
+                        default:
+                            Image(systemName: "photo")
+                        }
+                    }
                 }
             }
+            .frame(maxHeight: .infinity)
             .matchedTransitionSource(id: "recipe\(recipe.id)", in: namespace)
             .fullScreenCover(isPresented: $showRecipeDetails) {
                 RecipeScreen(recipe: recipe)

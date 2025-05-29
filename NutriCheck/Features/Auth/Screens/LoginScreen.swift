@@ -121,10 +121,7 @@ struct LoginScreen: View {
                                 }
                             }
                         }
-                        Button("login") {
-                            Auth.shared.setToken("test")
-                        }
-
+                        
                         Spacer(minLength: 60)
 
                         Button {

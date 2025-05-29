@@ -8,11 +8,17 @@
 import Charts
 import HealthKit
 import SwiftUI
+import SwiftData
 
 struct GoalsScreen: View {
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var health: HealthKitViewModel
     @EnvironmentObject var goals: GoalsViewModel
+    @EnvironmentObject var waterIntake: WaterIntakeViewModel
+    @EnvironmentObject var calorieIntake: CalorieIntakeViewModel
+    
+    @Query private var waterIntakes: [WaterIntake]
+    @Query private var calorieIntakes: [CalorieIntake]
 
     @State private var steps: Double = 0
     @State private var calories: Double = 0
@@ -21,6 +27,8 @@ struct GoalsScreen: View {
     @State private var calorieSamples: [(date: Date, value: Double)] = []
     @State private var stepSamples: [(date: Date, value: Double)] = []
     @State private var distanceSamples: [(date: Date, value: Double)] = []
+    @State private var showWaterHistory = false
+    @State private var showCalorieHistory = false
     
     @StateObject private var targetCalories = GoalsQueries.getTargetCalories()
 
@@ -38,55 +46,87 @@ struct GoalsScreen: View {
                     VStack(alignment: .leading) {
                         Text("Daily Calorie Goal")
                             .font(.title3.bold())
-                        withQueryProgress(targetCalories) { calories in
-                            SectionWrapper(title: "Daily Calories", icon: "carrot.fill") {
-                                VStack(spacing: 20) {
-                                    VStack(alignment: .leading, spacing: 12) {
-                                        Text("\(Int(calories.consumed))")
-                                            .font(.title2.bold())
-                                            +
-                                        Text(" out of \(Int(calories.target + self.calories))kcal")
-                                            .font(.body)
-                                            .fontWeight(.medium)
-
-                                        Gauge(value: 0.4) {}
+                        
+                        Button {
+                            showCalorieHistory = true
+                        } label: {
+                            SectionWrapper(title: "Daily Calorie Intake", icon: "flame.fill") {
+                                HStack(spacing: 20) {
+                                    ActivityRingView(
+                                        progress: calorieIntake.getTodayProgress(intake: calorieIntake.getTodayIntake(from: calorieIntakes), activeEnergyBurnt: calories),
+                                        mainColor: .orange,
+                                        lineWidth: 14
+                                    )
+                                    .frame(width: 40, height: 40)
+                                    
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        let todayIntake = calorieIntake.getTodayIntake(from: calorieIntakes)
+                                        let netCalories = calorieIntake.getNetCalories(intake: todayIntake, activeEnergyBurnt: calories)
+                                        
+                                        Text("\(Int(netCalories))/\(Int(calorieIntake.dailyGoal))")
+                                            .font(.system(.body, design: .rounded))
+                                            .bold()
+                                            + Text(" kcal")
+                                            .font(.system(.callout, design: .rounded))
+                                        
+                                        Text("Net calories (intake - burned)")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        
+                                        Text("\(Int(todayIntake)) consumed - \(Int(calories)) burned")
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
                                     }
                                     
-                                    HStack {
-                                        VStack(alignment: .leading) {
-                                            Text("\(Int(calories.target))kcal")
-                                                .font(.headline)
-                                            Text("base goal")
-                                                .font(.subheadline)
-                                                .foregroundStyle(.secondary)
-                                        }
-                                        Spacer()
-                                        Divider()
-                                            .overlay(Color.accentColor.opacity(0.3))
-                                        Spacer()
-                                        VStack(alignment: .leading) {
-                                            Text("\(Int(calories.consumed))kcal")
-                                                .font(.headline)
-                                            Text("consumed")
-                                                .font(.subheadline)
-                                                .foregroundStyle(.secondary)
-                                        }
-                                        Spacer()
-                                        Divider()
-                                            .overlay(Color.accentColor.opacity(0.3))
-                                        Spacer()
-                                        VStack(alignment: .leading) {
-                                            Text("\(Int(self.calories))kcal")
-                                                .font(.headline)
-                                            Text("active energy")
-                                                .font(.subheadline)
-                                                .foregroundStyle(.secondary)
-                                        }
-                                    }
+                                    Spacer()
+                                    
+                                    Image(systemName: "chevron.right")
+                                        .foregroundStyle(.secondary)
+                                        .font(.caption)
                                 }
-                                .padding(.top, 2)
+                                .padding(.horizontal)
                             }
                         }
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        Text("Daily Water Goal")
+                            .font(.title3.bold())
+                            .padding(.top)
+                        
+                        Button {
+                            showWaterHistory = true
+                        } label: {
+                            SectionWrapper(title: "Daily Water Intake", icon: "waterbottle.fill") {
+                                HStack(spacing: 20) {
+                                    ActivityRingView(
+                                        progress: waterIntake.getTodayProgress(from: waterIntakes),
+                                        mainColor: .blue,
+                                        lineWidth: 14
+                                    )
+                                    .frame(width: 40, height: 40)
+                                    
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text("\(Int(waterIntake.getTodayIntake(from: waterIntakes)))/\(Int(waterIntake.dailyGoal))")
+                                            .font(.system(.body, design: .rounded))
+                                            .bold()
+                                            + Text(" ml")
+                                            .font(.system(.callout, design: .rounded))
+                                        
+                                        Text("\(Int(waterIntake.getTodayProgress(from: waterIntakes) * 100))% of daily goal")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Image(systemName: "chevron.right")
+                                        .foregroundStyle(.secondary)
+                                        .font(.caption)
+                                }
+                                .padding(.horizontal)
+                            }
+                        }
+                        .buttonStyle(PlainButtonStyle())
 
                         Text("Your Goals")
                             .font(.title3.bold())
@@ -127,6 +167,12 @@ struct GoalsScreen: View {
                     .padding(.top, 70)
                     .padding(.bottom, 80)
                     .padding(.horizontal)
+                }
+                .sheet(isPresented: $showWaterHistory) {
+                    WaterHistoryScreen()
+                }
+                .sheet(isPresented: $showCalorieHistory) {
+                    CalorieHistoryScreen()
                 }
                 .onAppear {
                     health.readActiveEnergyBurnedRecordsToday { samples in

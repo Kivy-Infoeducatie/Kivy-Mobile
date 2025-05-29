@@ -64,11 +64,6 @@ struct AccountScreen: View {
                                     .bold()
                             }
                         }
-                        NavigationLink {
-                            Text("Settings")
-                        } label: {
-                            Label("Settings", systemImage: "gear")
-                        }
                     }
                     
                     Button("Log out", role: .destructive) {

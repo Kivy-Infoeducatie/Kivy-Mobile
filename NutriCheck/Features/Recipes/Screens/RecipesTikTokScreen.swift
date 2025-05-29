@@ -16,6 +16,8 @@ struct RecipesTikTokScreen: View {
 
     @Binding var offset: CGFloat
     @State private var scrollPosition: Int?
+    @State private var lastScrollOffset: CGFloat = 0
+    @State private var scrollTimer: Timer?
 
     @Namespace private var cardNamespace
 
@@ -26,7 +28,7 @@ struct RecipesTikTokScreen: View {
             VStack(spacing: 0) {
                 HStack {
                     Button(action: {
-                        withAnimation {
+                        withAnimation(.easeInOut(duration: 0.3)) {
                             backAction()
                         }
                     }) {
@@ -59,38 +61,22 @@ struct RecipesTikTokScreen: View {
 
                 GeometryReader { geo in
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 0) {
-                            ForEach(
-                                Array(recipes.enumerated()),
-                                id: \.offset
-                            ) { index, recipe in
-//                                NavigationLink(
-//                                    destination: RecipeScreen(recipe: recipe)
-//                                        .navigationTransition(
-//                                            .zoom(sourceID: recipe.id, in: namespace)
-//                                        )
-//                                ) {
-                                CardView(recipe: recipe, geo: geo)
-//                                }
-//                                .matchedTransitionSource(id: recipe.id, in: namespace)
-                                    .frame(
-                                        width: geo.size.width - 72,
-                                        height: 500,
-                                        alignment: .bottomLeading
-                                    )
-                                    .padding(.horizontal, 36)
-                                    .visualEffect { content, geoProxy in
-                                        content
-                                            .scaleEffect(
-                                                scale(geoProxy),
-                                                anchor: .trailing
-                                            )
-                                            .rotationEffect(rotation(geoProxy, rotation: 3))
-                                            .offset(x: minX(geoProxy))
-                                            .offset(x: excessMinX(geoProxy, offset: 4))
-                                    }
-                                    .matchedGeometryEffect(id: "card\(index)", in: namespace)
-                                    .zIndex(recipes.zIndex(recipe))
+                        LazyHStack(spacing: 0) {
+                            ForEach(Array(recipes.enumerated()), id: \.offset) { index, recipe in
+                                OptimizedCardView(
+                                    recipe: recipe, 
+                                    index: index,
+                                    geo: geo,
+                                    currentScrollPosition: scrollPosition ?? 0
+                                )
+                                .frame(
+                                    width: geo.size.width - 72,
+                                    height: 500,
+                                    alignment: .bottomLeading
+                                )
+                                .padding(.horizontal, 36)
+                                .matchedGeometryEffect(id: "card\(index)", in: namespace)
+                                .zIndex(Double(recipes.count - index))
                             }
                         }
                         .padding(.vertical)
@@ -98,19 +84,20 @@ struct RecipesTikTokScreen: View {
                     }
                     .scrollPosition(id: $scrollPosition)
                     .scrollTargetBehavior(.paging)
-                    .onScrollGeometryChange(for: CGFloat.self) { scrollGeo in
-                        scrollGeo.contentOffset.x / geo.size.width
-                    } action: { _, newValue in
-                        let maxValue = CGFloat(recipes.count - 1)
-                        offset = min(max(newValue, 0), maxValue)
-                    }
-                    .onChange(of: scrollPosition) {
-                        recommendationsViewModel.setIndex(scrollPosition ?? 0)
-
-                        if scrollPosition == recipes.count - 3 {
-                            recommend.execute((), onSuccess: { recipes in
-                                recommendationsViewModel.addRecommendations(recipes)
-                            })
+                    .onChange(of: scrollPosition) { _, newPosition in
+                        guard let position = newPosition else { return }
+                        
+                        // Update index immediately for smooth UI
+                        recommendationsViewModel.setIndex(position)
+                        
+                        // Debounced loading of more recipes
+                        if recommendationsViewModel.shouldLoadMore {
+                            scrollTimer?.invalidate()
+                            scrollTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+                                recommend.execute((), onSuccess: { newRecipes in
+                                    recommendationsViewModel.addRecommendations(newRecipes)
+                                })
+                            }
                         }
                     }
                     .onAppear {
@@ -120,59 +107,251 @@ struct RecipesTikTokScreen: View {
                 .frame(height: 500)
             }
         }
-    }
-
-    nonisolated func minX(_ proxy: GeometryProxy) -> CGFloat {
-        let minX = proxy.frame(in: .scrollView(axis: .horizontal)).minX
-        return minX < 0 ? 0 : -minX
-    }
-
-    nonisolated func progress(_ proxy: GeometryProxy, limit: CGFloat = 2) -> CGFloat {
-        let maxX = proxy.frame(in: .scrollView(axis: .horizontal)).maxX
-        let width = proxy.bounds(of: .scrollView(axis: .horizontal))?.width ?? 0
-
-        let progress = (maxX / width) - 1
-        let cappedProgress = min(progress, limit)
-
-        return cappedProgress
-    }
-
-    nonisolated func scale(_ proxy: GeometryProxy, scale: CGFloat = 0.1) -> CGFloat {
-        let progress = progress(proxy)
-        return 1 - (progress * scale)
-    }
-
-    nonisolated func excessMinX(_ proxy: GeometryProxy, offset: CGFloat = 10) -> CGFloat {
-        let progress = progress(proxy)
-        return progress * offset
-    }
-
-    nonisolated func rotation(_ proxy: GeometryProxy, rotation: CGFloat = 5) -> Angle {
-        let progress = progress(proxy)
-        return .degrees(Double(progress * rotation))
-    }
-}
-
-// #Preview {
-//    RecipesTikTokScreen(
-//        backAction: {
-//        },
-//        namespace: Namespace().wrappedValue,
-//        recipes: [],
-//        offset: .constant(0)
-// )
-// }
-
-private extension [Recipe] {
-    func zIndex(_ item: Recipe) -> CGFloat {
-        if let index = firstIndex(where: { $0.id == item.id }) {
-            return CGFloat(count) - CGFloat(index)
+        .onDisappear {
+            scrollTimer?.invalidate()
         }
-
-        return 0
     }
 }
 
+// Optimized CardView with reduced visual effects
+struct OptimizedCardView: View {
+    @Namespace private var namespace
+    @State private var showRecipe: Bool = false
+
+    let recipe: Recipe
+    let index: Int
+    let geo: GeometryProxy
+    let currentScrollPosition: Int
+
+    @EnvironmentObject private var savedRecipesViewModel: SavedRecipesViewModel
+
+    // Cache expensive calculations
+    private var isCurrentCard: Bool {
+        index == currentScrollPosition
+    }
+    
+    private var cardDistance: Int {
+        abs(index - currentScrollPosition)
+    }
+
+    @State private var lineLimit: Int = 2
+
+    var body: some View {
+        Button(action: {
+            showRecipe.toggle()
+        }) {
+            ZStack(alignment: .bottomLeading) {
+                // Optimized image loading - use CachedAsyncImage for better performance
+                CachedAsyncImage(url: URL(string: recipe.images.first ?? "")) { result in
+                    switch result {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(
+                                width: max(0, geo.size.width - 72),
+                                height: 500
+                            )
+                            .clipped()
+                    case .empty, .failure:
+                        OptimizedFallbackImage(width: max(0, geo.size.width - 72))
+                    default:
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.3))
+                            .frame(
+                                width: max(0, geo.size.width - 72),
+                                height: 500
+                            )
+                    }
+                }
+
+                // Simple gradient overlay
+                LinearGradient(
+                    colors: [.clear, .black.opacity(0.7)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 200)
+
+                // Card content - only render expensive content for nearby cards
+                if cardDistance <= 3 {
+                    CardContentView(
+                        recipe: recipe, 
+                        savedRecipesViewModel: savedRecipesViewModel,
+                        lineLimit: $lineLimit
+                    )
+                } else {
+                    // Simplified content for distant cards
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(recipe.name)
+                            .font(.title2.bold())
+                            .lineLimit(2)
+                        Text("by \(recipe.authorUsername)")
+                            .font(.callout.bold())
+                            .opacity(0.9)
+                            .lineLimit(1)
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                }
+            }
+        }
+        .clipShape(.rect(cornerRadius: 20))
+        .scaleEffect(isCurrentCard ? 1.0 : 0.95)
+        .opacity(cardDistance <= 1 ? 1.0 : 0.8)
+        .animation(.easeOut(duration: 0.15), value: isCurrentCard)
+        .fullScreenCover(isPresented: $showRecipe) {
+            RecipeScreen(recipe: recipe)
+                .navigationTransition(
+                    .zoom(sourceID: recipe.id, in: namespace)
+                )
+        }
+        .matchedTransitionSource(id: recipe.id, in: namespace)
+    }
+}
+
+// Separate content view to reduce complexity
+struct CardContentView: View {
+    let recipe: Recipe
+    let savedRecipesViewModel: SavedRecipesViewModel
+    @Binding var lineLimit: Int
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(recipe.name)
+                        .font(.title2.bold())
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(2)
+                    Text("by \(recipe.authorUsername)")
+                        .font(.callout.bold())
+                        .opacity(0.9)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Button {
+                    if savedRecipesViewModel.isSaved(recipe) {
+                        withAnimation(.spring(duration: 0.3)) {
+                            savedRecipesViewModel.removeRecipe(recipe)
+                        }
+                    } else {
+                        withAnimation(.spring(duration: 0.3)) {
+                            savedRecipesViewModel.saveRecipe(recipe)
+                        }
+                    }
+                } label: {
+                    Image(systemName: "bookmark.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 24, height: 24)
+                        .foregroundColor(
+                            savedRecipesViewModel.isSaved(recipe) ? .yellow : .white
+                        )
+                        .opacity(0.8)
+                }
+            }
+            
+            Text(recipe.description)
+                .font(.callout)
+                .opacity(0.9)
+                .lineLimit(lineLimit)
+                .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        lineLimit = lineLimit == 2 ? 10 : 2
+                    }
+                }
+                .multilineTextAlignment(.leading)
+
+            // Simplified stats view
+            RecipeStatsView(recipe: recipe)
+        }
+        .foregroundStyle(.white)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+    }
+}
+
+// Optimized stats view
+struct RecipeStatsView: View {
+    let recipe: Recipe
+    
+    var body: some View {
+        HStack(spacing: 0) {
+            StatItemView(
+                title: "Difficulty",
+                value: recipe.difficulty.title,
+                color: recipe.difficulty.color
+            )
+            
+            Spacer()
+            StatDivider()
+            Spacer()
+            
+            StatItemView(
+                title: "Time",
+                value: "\(recipe.totalTime)m",
+                color: .white
+            )
+            
+            Spacer()
+            StatDivider()
+            Spacer()
+            
+            StatItemView(
+                title: "Calories",
+                value: "\(Int(recipe.calories ?? 0)) kcal",
+                color: .white
+            )
+        }
+    }
+}
+
+struct StatItemView: View {
+    let title: String
+    let value: String
+    let color: Color
+    
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(title)
+                .font(.caption.bold())
+                .foregroundStyle(.secondary)
+
+            Text(value)
+                .font(.callout.bold())
+                .foregroundStyle(color)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+struct StatDivider: View {
+    var body: some View {
+        Rectangle()
+            .fill(Color.white.opacity(0.5))
+            .frame(width: 1, height: 30)
+    }
+}
+
+// Optimized fallback image
+struct OptimizedFallbackImage: View {
+    let width: CGFloat
+
+    var body: some View {
+        Image(systemName: "photo")
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .padding(40)
+            .frame(width: width, height: 500)
+            .background(Color.gray.opacity(0.3))
+    }
+}
+
+// Original CardView for backward compatibility with RecipesScreen.swift
 struct CardView: View {
     @Namespace private var namespace
     @State private var showRecipe: Bool = false
@@ -229,14 +408,13 @@ struct CardView: View {
                     }
                 }
 
-                VariableBlurView(direction: .blurredBottomClearTop)
-                    .frame(height: showStats ? 220 : 120)
                 LinearGradient(
                     colors: [.clear, .black.opacity(0.7)],
                     startPoint: .top,
                     endPoint: .bottom
                 )
                 .frame(height: showStats ? 220 : 120)
+                
                 VStack(alignment: .leading) {
                     HStack {
                         VStack(alignment: .leading) {
@@ -331,13 +509,12 @@ struct CardView: View {
                                     .font(.caption.bold())
                                     .foregroundStyle(.secondary)
 
-                                Text("\(recipe.calories ?? 0, format: .number) kcal")
+                                Text("\(Int(recipe.calories ?? 0)) kcal")
                                     .font(.callout.bold())
                                     .foregroundStyle(.white)
                             }
                             .frame(maxWidth: .infinity)
                         }
-                        //                    .padding(.horizontal, 10)
                     }
                 }
                 .foregroundStyle(.white)

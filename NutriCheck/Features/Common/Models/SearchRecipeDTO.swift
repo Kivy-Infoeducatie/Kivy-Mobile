@@ -9,64 +9,64 @@ import Foundation
 
 struct SearchRecipeDTO: Codable {
     // Calories
-    let minCalories: Double?
-    let maxCalories: Double?
+    var minCalories: Double?
+    var maxCalories: Double?
     
     // Total Fat
-    let minTotalFat: Double?
-    let maxTotalFat: Double?
+    var minTotalFat: Double?
+    var maxTotalFat: Double?
     
     // Sugar
-    let minSugar: Double?
-    let maxSugar: Double?
+    var minSugar: Double?
+    var maxSugar: Double?
     
     // Sodium
-    let minSodium: Double?
-    let maxSodium: Double?
+    var minSodium: Double?
+    var maxSodium: Double?
     
     // Protein
-    let minProtein: Double?
-    let maxProtein: Double?
+    var minProtein: Double?
+    var maxProtein: Double?
     
     // Saturated Fat
-    let minSaturatedFat: Double?
-    let maxSaturatedFat: Double?
+    var minSaturatedFat: Double?
+    var maxSaturatedFat: Double?
     
     // Carbohydrates
-    let minCarbohydrates: Double?
-    let maxCarbohydrates: Double?
+    var minCarbohydrates: Double?
+    var maxCarbohydrates: Double?
     
     // Fiber
-    let minFiber: Double?
-    let maxFiber: Double?
+    var minFiber: Double?
+    var maxFiber: Double?
     
     // Cholesterol
-    let minCholesterol: Double?
-    let maxCholesterol: Double?
+    var minCholesterol: Double?
+    var maxCholesterol: Double?
     
     // Steps
-    let minSteps: Int?
-    let maxSteps: Int?
+    var minSteps: Int?
+    var maxSteps: Int?
     
     // Preparation Time
-    let minPreparationTime: Int?
-    let maxPreparationTime: Int?
+    var minPreparationTime: Int?
+    var maxPreparationTime: Int?
     
     // Cooking Time
-    let minCookingTime: Int?
-    let maxCookingTime: Int?
+    var minCookingTime: Int?
+    var maxCookingTime: Int?
     
     // Dates
-    let minDate: String?
-    let maxDate: String?
+    var minDate: String?
+    var maxDate: String?
     
     // Tags and Difficulty
-    let tags: [String]?
-    let difficulty: [String]?
+    var tags: [String]?
+    var difficulty: [String]?
     
     // Search and Offset
-    let offset: Int?
-    let search: String?
+    var offset: Int?
+    var search: String?
     
     enum DifficultyLevel: String, Codable {
         case easy

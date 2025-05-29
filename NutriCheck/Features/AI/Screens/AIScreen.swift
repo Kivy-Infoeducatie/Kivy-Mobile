@@ -157,35 +157,192 @@ struct ChatMessage: Identifiable, Equatable {
 struct MessageBubble: View {
     let message: ChatMessage
     @State private var isVisible = false
+    @State private var showFullRecipe = false
     
     var body: some View {
         HStack {
             if message.isUser { Spacer() }
             
-            VStack(alignment: message.isUser ? .trailing : .leading) {
-                Text(message.text)
+            VStack(alignment: message.isUser ? .trailing : .leading, spacing: 12) {
+                // Text message
+                if !message.text.isEmpty {
+                    Text(message.text)
+                        .font(.body)
+                        .padding()
+                        .background(message.isUser ? Color.blue.opacity(0.2) : Color.gray.opacity(0.2))
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+                
+                // Recipe display
                 if let recipe = message.recipe {
-                    VStack(alignment: .leading) {
-                        Text(recipe.name)
-                            .font(.title3.bold())
-                        Text(recipe.description)
-                            .font(.caption)
-                        HStack {
-                            Text("\(recipe.ingredients?.count ?? 0) ingredients")
-                                .font(.caption)
-                            Divider()
-                            Text("\(recipe.cookingTime ?? 0) minutes")
-                                .font(.caption)
+                    VStack(alignment: .leading, spacing: 16) {
+                        // Recipe header
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Image(systemName: "fork.knife")
+                                    .foregroundColor(.orange)
+                                Text("Recipe Generated")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Button {
+                                    showFullRecipe.toggle()
+                                } label: {
+                                    Image(systemName: showFullRecipe ? "chevron.up" : "chevron.down")
+                                        .font(.caption)
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                            
+                            Text(recipe.name)
+                                .font(.title2.bold())
+                                .multilineTextAlignment(.leading)
+                        }
+                        
+                        // Recipe stats
+                        HStack(spacing: 16) {
+                            VStack(alignment: .leading) {
+                                Text("Difficulty")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text(recipe.difficulty.title)
+                                    .font(.subheadline.bold())
+                                    .foregroundColor(recipe.difficulty.color)
+                            }
+                            
+                            VStack(alignment: .leading) {
+                                Text("Total Time")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text("\(recipe.totalTime) min")
+                                    .font(.subheadline.bold())
+                            }
+                            
+                            VStack(alignment: .leading) {
+                                Text("Servings")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text("\(recipe.servings ?? 1)")
+                                    .font(.subheadline.bold())
+                            }
+                            
+                            VStack(alignment: .leading) {
+                                Text("Calories")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text("\(Int(recipe.calories ?? 0))")
+                                    .font(.subheadline.bold())
+                            }
+                            
+                            Spacer()
+                        }
+                        
+                        // Expandable content
+                        if showFullRecipe {
+                            VStack(alignment: .leading, spacing: 16) {
+                                // Description
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Description")
+                                        .font(.headline)
+                                    Text(recipe.description)
+                                        .font(.body)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                // Ingredients
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Ingredients")
+                                        .font(.headline)
+                                    
+                                    ForEach(recipe.ingredients ?? [], id: \.name) { ingredient in
+                                        HStack {
+                                            Circle()
+                                                .fill(Color.blue.opacity(0.3))
+                                                .frame(width: 6, height: 6)
+                                            
+                                            if let quantity = ingredient.quantity, let unit = ingredient.unit {
+                                                Text("\(quantity) \(unit)")
+                                                    .font(.body.bold())
+                                                    .padding(.horizontal, 8)
+                                                    .padding(.vertical, 4)
+                                                    .background(Color.blue.opacity(0.1))
+                                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                                    .foregroundColor(.blue)
+                                            }
+                                            
+                                            Text(ingredient.name)
+                                                .font(.body)
+                                            
+                                            Spacer()
+                                        }
+                                    }
+                                }
+                                
+                                // Steps
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Instructions")
+                                        .font(.headline)
+                                    
+                                    ForEach(Array((recipe.steps ?? []).enumerated()), id: \.offset) { index, step in
+                                        HStack(alignment: .top, spacing: 12) {
+                                            Text("\(index + 1)")
+                                                .font(.caption.bold())
+                                                .frame(width: 24, height: 24)
+                                                .background(Color.orange.opacity(0.2))
+                                                .clipShape(Circle())
+                                                .foregroundColor(.orange)
+                                            
+                                            Text(step)
+                                                .font(.body)
+                                                .multilineTextAlignment(.leading)
+                                            
+                                            Spacer()
+                                        }
+                                    }
+                                }
+                                
+                                // Nutrition info
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Nutrition (per serving)")
+                                        .font(.headline)
+                                    
+                                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
+                                        if let protein = recipe.protein {
+                                            NutritionItem(name: "Protein", value: "\(Int(protein))g")
+                                        }
+                                        if let carbs = recipe.carbohydrates {
+                                            NutritionItem(name: "Carbs", value: "\(Int(carbs))g")
+                                        }
+                                        if let fat = recipe.totalFat {
+                                            NutritionItem(name: "Fat", value: "\(Int(fat))g")
+                                        }
+                                        if let fiber = recipe.fiber {
+                                            NutritionItem(name: "Fiber", value: "\(Int(fiber))g")
+                                        }
+                                        if let sodium = recipe.sodium {
+                                            NutritionItem(name: "Sodium", value: "\(Int(sodium))mg")
+                                        }
+                                        if let sugar = recipe.sugar {
+                                            NutritionItem(name: "Sugar", value: "\(Int(sugar))g")
+                                        }
+                                    }
+                                }
+                            }
+                            .transition(.asymmetric(
+                                insertion: .opacity.combined(with: .move(edge: .top)),
+                                removal: .opacity.combined(with: .move(edge: .top))
+                            ))
                         }
                     }
                     .padding()
-                    .background(Color.white.opacity(0.3))
+                    .background(Color.orange.opacity(0.1))
                     .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+                    )
                 }
             }
-            .padding()
-            .background(message.isUser ? Color.gray.opacity(0.3) : Color.white.opacity(0.3))
-            .clipShape(RoundedRectangle(cornerRadius: 16))
             .opacity(isVisible ? 1 : 0)
             .offset(y: isVisible ? 0 : 20)
             .onAppear {
@@ -196,6 +353,26 @@ struct MessageBubble: View {
             
             if !message.isUser { Spacer() }
         }
+    }
+}
+
+struct NutritionItem: View {
+    let name: String
+    let value: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(name)
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Text(value)
+                .font(.body.bold())
+                .foregroundColor(.primary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(8)
+        .background(Color.white.opacity(0.3))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }
 
@@ -328,9 +505,14 @@ struct AIScreen: View {
             sendMessageMutation.execute((chatID: chatID, message: text)) { response in
                 print("send message response: \(response)")
                 withAnimation {
-                    if let responseText = getResponseText(from: response.message) {
-                        messages.append(ChatMessage(text: responseText, isUser: false))
+                    let responseText = response.message.response
+                    let recipe = response.message.recipe?.toRecipe()
+                    if let recipe = recipe {
+                        print("Converted recipe: \(recipe.name)")
+                        print("Recipe ingredients count: \(recipe.ingredients?.count ?? 0)")
+                        print("Recipe steps count: \(recipe.steps?.count ?? 0)")
                     }
+                    messages.append(ChatMessage(text: responseText, isUser: false, recipe: recipe))
                 }
             }
         } else {
@@ -340,19 +522,21 @@ struct AIScreen: View {
                 print("create chat response: \(response)")
                 currentChatID = response.chatID
                 withAnimation {
-                    if let responseText = getResponseText(from: response.message) {
-                        messages.append(ChatMessage(text: responseText, isUser: false))
+                    let responseText = response.message.response
+                    let recipe = response.message.recipe?.toRecipe()
+                    if let recipe = recipe {
+                        print("Converted recipe: \(recipe.name)")
+                        print("Recipe ingredients count: \(recipe.ingredients?.count ?? 0)")
+                        print("Recipe steps count: \(recipe.steps?.count ?? 0)")
                     }
+                    messages.append(ChatMessage(text: responseText, isUser: false, recipe: recipe))
                 }
             }
         }
     }
     
     private func getResponseText(from response: Response) -> String? {
-        switch response.response {
-        case let responseText:
-            return responseText
-        }
+        return response.response
     }
     
     private func getMessageText(from message: Message) -> String {
@@ -366,11 +550,8 @@ struct AIScreen: View {
     }
     
     private func getMessageRecipe(from message: Message) -> Recipe? {
-        if case let .string(text) = message.parts.first?.text {
-            return nil
-        }
         if case let .response(response) = message.parts.first?.text {
-            return response.recipe
+            return response.recipe?.toRecipe()
         }
         return nil
     }

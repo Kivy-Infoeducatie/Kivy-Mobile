@@ -93,7 +93,82 @@ enum TextContent: Codable {
 
 struct Response: Codable {
     let response: String
-    let recipe: Recipe?
+    let recipe: AIRecipe?
+}
+
+struct AIRecipe: Codable {
+    let id: Int
+    let name: String
+    let fiber: Double?
+    let steps: [String]
+    let sugar: Double?
+    let sodium: Double?
+    let protein: Double?
+    let calories: Double?
+    let servings: Int
+    let totalFat: Double?
+    let difficulty: String
+    let cholesterol: Double?
+    let cookingTime: Int
+    let ingredients: [AIIngredient]
+    let servingSize: Int
+    let saturatedFat: Double?
+    let carbohydrates: Double?
+    let preparationTime: Int
+    let description: String
+}
+
+struct AIIngredient: Codable {
+    let name: String
+    let unit: String?
+    let quantity: Double?
+}
+
+// Extension to convert AIRecipe to Recipe
+extension AIRecipe {
+    func toRecipe() -> Recipe {
+        // Convert API ingredients array to Recipe ingredients array
+        let ingredientsArray: [Ingredient] = self.ingredients.map { apiIngredient in
+            Ingredient(
+                name: apiIngredient.name,
+                shortName: nil,
+                quantity: apiIngredient.quantity != nil ? String(Int(apiIngredient.quantity!)) : "1",
+                unit: apiIngredient.unit ?? "piece", // Default to "piece" if no unit provided
+                unitQuantity: nil,
+                unitUnit: nil
+            )
+        }
+        
+        return Recipe(
+            id: self.id == -1 ? 0 : self.id, // Handle -1 id from API
+            name: self.name,
+            cookingTime: self.cookingTime,
+            tags: ["AI Generated", "Modified"], // Default tags for AI-modified recipes
+            description: self.description,
+            ingredientsCount: ingredientsArray.count,
+            calories: self.calories,
+            likesCount: nil,
+            authorName: "AI Assistant",
+            images: [], // No images in AI response
+            difficulty: Difficulty(rawValue: self.difficulty) ?? .easy,
+            author: nil,
+            createdAt: nil,
+            preparationTime: self.preparationTime,
+            steps: self.steps,
+            ingredients: ingredientsArray,
+            totalFat: self.totalFat,
+            sugar: self.sugar,
+            sodium: self.sodium,
+            protein: self.protein,
+            saturatedFat: self.saturatedFat,
+            carbohydrates: self.carbohydrates,
+            cholesterol: self.cholesterol,
+            fiber: self.fiber,
+            servings: self.servings,
+            servingsSize: self.servingSize,
+            posts: nil
+        )
+    }
 }
 
 struct CreateChatResponse: Codable {

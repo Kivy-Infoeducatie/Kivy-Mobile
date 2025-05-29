@@ -1,12 +1,4 @@
 //
-//  KeychainSwift.swift
-//  NutriCheck
-//
-//  Created by Alexandru Simedrea on 10.01.2025.
-//
-
-
-//
 // Keychain helper for iOS/Swift.
 //
 // https://github.com/evgenyneu/keychain-swift

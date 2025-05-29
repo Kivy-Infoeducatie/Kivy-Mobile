@@ -7,9 +7,11 @@
 
 import CachedAsyncImage
 import SwiftUI
+import SwiftData
 
 struct RecipeScreen: View {
     @Environment(\.presentToast) var presentToast
+    @Environment(\.modelContext) private var modelContext
     
     @State private var recipe: Recipe
     
@@ -19,6 +21,8 @@ struct RecipeScreen: View {
     
     @State private var showOngoingRecipe: Bool = false
     @State private var showAddIngredients: Bool = false
+    @State private var showModifiedRecipe: Bool = false
+    @State private var modifiedRecipe: Recipe?
     
     @EnvironmentObject private var ongoingRecipe: OngoingRecipeViewModel
     @EnvironmentObject private var savedRecipes: SavedRecipesViewModel
@@ -26,6 +30,9 @@ struct RecipeScreen: View {
     
     @StateObject private var detailedRecipe: Query<Recipe>
     @StateObject private var log = GoalsQueries.logRecipe()
+    @StateObject private var modifyRecipeMutation = AIQueries.modifyRecipe()
+    
+    @State private var showLoadingModifiedRecipe = false
     
     private var recipeStarted: Bool {
         ongoingRecipe.recipe != nil && ongoingRecipe.recipe?.id == recipe.id
@@ -74,8 +81,8 @@ struct RecipeScreen: View {
                                 }
                             }
                             
-                            VariableBlurView(direction: .blurredBottomClearTop)
-                                .frame(height: 150)
+//                            VariableBlurView(direction: .blurredBottomClearTop)
+//                                .frame(height: 150)
                             LinearGradient(
                                 colors: [.clear, .black.opacity(0.7)],
                                 startPoint: .top,
@@ -222,8 +229,11 @@ struct RecipeScreen: View {
                             }
                             
                             Button {
+                                // Log to API
                                 log.execute(recipe.id, presenting: presentToast,
                                             successMessage: "Calories logged")
+                                // Also log to local SwiftData
+                                RecipeCalorieLogger.logRecipe(recipe, modelContext: modelContext, presentToast: presentToast)
                             } label: {
                                 HStack {
                                     Image(
@@ -267,14 +277,32 @@ struct RecipeScreen: View {
                             Text("Cook AI")
                                 .font(.title3.bold())
                                 .padding(.top, 12)
-                            AISearchBar(searchText: $aiPrompt, onSubmit: { _ in })
-                                .padding(.top, 12)
-                                .padding(.bottom, 6)
+                            HStack {
+                                AISearchBar(searchText: $aiPrompt, onSubmit: handleModifyRecipe)
+                                    .padding(.top, 12)
+                                    .padding(.bottom, 6)
+                                if showLoadingModifiedRecipe {
+                                    ProgressView()
+                                        .padding(.leading, 16)
+                                }
+                            }
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack {
-                                    AIChip(text: "Make it healthier", action: {})
-                                    AIChip(text: "Make it match my goals", action: {})
-                                    AIChip(text: "Make it vegan", action: {})
+                                    AIChip(text: "Make it healthier", action: {
+                                        aiPrompt = "Make this recipe healthier by reducing calories and using healthier ingredients"
+                                    })
+                                    AIChip(text: "Make it match my goals", action: {
+                                        aiPrompt = "Modify this recipe to match my dietary goals and preferences"
+                                    })
+                                    AIChip(text: "Make it vegan", action: {
+                                        aiPrompt = "Convert this recipe to be completely vegan by replacing all animal products with plant-based alternatives"
+                                    })
+                                    AIChip(text: "Reduce cooking time", action: {
+                                        aiPrompt = "Modify this recipe to reduce the cooking time while maintaining the flavor"
+                                    })
+                                    AIChip(text: "Lower sodium", action: {
+                                        aiPrompt = "Reduce the sodium content in this recipe while keeping it flavorful"
+                                    })
                                 }
                             }
                             .scrollClipDisabled()
@@ -408,6 +436,15 @@ struct RecipeScreen: View {
             .sheet(isPresented: $showAddIngredients) {
                 AddIngredientsSheet(ingredients: recipe.ingredients ?? [])
             }
+            .sheet(isPresented: $showModifiedRecipe) {
+                if let modifiedRecipe = modifiedRecipe {
+                    ModifiedRecipeScreen(
+                        originalRecipe: recipe,
+                        modifiedRecipe: modifiedRecipe,
+                        prompt: aiPrompt
+                    )
+                }
+            }
             .onAppear {
                 Task {
                     _ = detailedRecipe.onSuccess { recipe in
@@ -418,6 +455,27 @@ struct RecipeScreen: View {
                 }
             }
         }
+    }
+    
+    private func handleModifyRecipe(_ prompt: String) {
+        guard !prompt.isEmpty else { return }
+        
+        showLoadingModifiedRecipe = true
+        
+        aiPrompt = prompt
+        modifyRecipeMutation.execute(
+            (recipeID: recipe.id, message: prompt),
+            presenting: presentToast,
+            successMessage: "Recipe modified successfully!",
+            onSuccess: { recipe in
+                modifiedRecipe = recipe
+                showModifiedRecipe = true
+                aiPrompt = "" // Clear the prompt after successful modification
+                showLoadingModifiedRecipe = false
+            },
+            onError: { _ in
+            }
+        )
     }
 }
 
